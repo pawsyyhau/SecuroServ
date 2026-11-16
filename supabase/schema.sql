@@ -126,9 +126,23 @@ create policy "staff complaints" on public.complaints for all using(public.is_st
 -- Activa Realtime en chat_messages desde el panel de Supabase.
 -- Para producción: limita el spam público y valida quién puede dejar reseñas/quejas.
 
--- Vista pública de solo agregados: no expone perfiles ni datos de reservas.
-create or replace view public.public_dashboard_stats as
-select
- (select count(*) from public.profiles where status='approved' and role='agent')::integer as agents_available,
- (select count(*) from public.appointments where status='confirmed')::integer as services_total;
-grant select on public.public_dashboard_stats to anon, authenticated;
+-- Estadísticas públicas limitadas a dos contadores agregados.
+-- La función evita exponer directamente las tablas privadas a visitantes.
+drop view if exists public.public_dashboard_stats;
+
+create or replace function public.get_public_dashboard_stats()
+returns table(agents_available integer, services_total integer)
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+ select
+  (select count(*)::integer from public.profiles
+   where status='approved' and role='agent'),
+  (select count(*)::integer from public.appointments
+   where status='confirmed');
+$$;
+
+revoke all on function public.get_public_dashboard_stats() from public;
+grant execute on function public.get_public_dashboard_stats() to anon, authenticated;
