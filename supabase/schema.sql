@@ -125,3 +125,10 @@ create policy "staff complaints" on public.complaints for all using(public.is_st
 
 -- Activa Realtime en chat_messages desde el panel de Supabase.
 -- Para producción: limita el spam público y valida quién puede dejar reseñas/quejas.
+
+-- Vista pública de solo agregados: no expone perfiles ni datos de reservas.
+create or replace view public.public_dashboard_stats as
+select
+ (select count(*) from public.profiles where status='approved' and role='agent')::integer as agents_available,
+ (select count(*) from public.appointments where status='confirmed')::integer as services_total;
+grant select on public.public_dashboard_stats to anon, authenticated;
