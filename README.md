@@ -27,3 +27,9 @@ Después de crear la primera cuenta, asigna manualmente a ese usuario `role='dir
 - Base SQL para perfiles, agenda, fichajes, clientes, reseñas, quejas y chat.
 
 El chat requiere activar Supabase Realtime y completar el flujo de atención en vivo. Antes de producción, endurecer RLS, validación de solapamientos y controles anti-spam.
+
+## Agenda y privacidad
+La página pública consulta únicamente `availability_slots` (fecha y hora). Los datos identificativos de clientes permanecen en `appointments`, que solo puede leer personal aprobado. El trigger mantiene los intervalos públicos sincronizados con solicitudes pendientes y confirmadas. La base incluye una restricción para impedir reservas superpuestas.
+
+## Estado
+Esta es la primera entrega del portal y la estructura de datos. El panel completo de agentes, fichajes, clientes, reseñas, quejas, gestión de reservas y chat realmente en vivo aún requiere desarrollo adicional y configuración de Supabase.
