@@ -49,3 +49,20 @@ No publiques nunca `service_role`, claves JWT ni contraseñas de base de datos.
 ## Estado de autenticación
 
 La autenticación actual del frontend todavía usa Supabase Auth y la conversión interna de usuario a correo sintético. La migración solicitada a usuario y contraseña sin correo **todavía no está aplicada**. Antes de activarla hay que preparar el backend y migrar el esquema de cuentas con cuidado para conservar los perfiles y las relaciones existentes.
+
+
+## Primer administrador y registro
+
+El primer registro se protege desde el servidor de Render. Antes de habilitarlo:
+
+1. Ejecuta el contenido de `supabase/initial-admin.sql` en Supabase → SQL Editor.
+2. En Render → Web Service → Environment agrega:
+   - `SUPABASE_URL`: URL del proyecto Supabase.
+   - `SUPABASE_SERVICE_ROLE_KEY`: clave secreta de servidor de Supabase (nunca publicarla ni ponerla en GitHub).
+   - `INITIAL_ADMIN_KEY`: clave privada que Dirección entregará únicamente a la primera persona que registre la cuenta.
+3. Conserva también las variables públicas `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` para compilar el frontend.
+4. Guarda los cambios y vuelve a desplegar.
+
+La API valida la clave inicial en el servidor y la base de datos permite reclamar el cargo una sola vez. La primera cuenta se convierte en `director` aprobado; los registros siguientes nacen como clientes. No se solicita correo al usuario ni se requiere confirmación por correo: el correo técnico interno se genera a partir del nombre de usuario.
+
+No compartas `SUPABASE_SERVICE_ROLE_KEY` ni `INITIAL_ADMIN_KEY` por chat, capturas o repositorios.
