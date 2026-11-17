@@ -155,8 +155,8 @@ async function handleApi(req, res, url) {
     if (bootstrapError || !bootstrap) { sendJson(res, 503, { error: "Falta aplicar la configuración inicial de SecuroServ en Supabase." }); return true; }
     if (bootstrap.admin_claimed) { sendJson(res, 409, { error: "La activación inicial ya fue utilizada. Tu cuenta permanece como Cliente." }); return true; }
     const { data: profile, error: profileError } = await adminClient.from("profiles").select("role,status").eq("id", authData.user.id).maybeSingle();
-    if (profileError || !profile || profile.role !== "customer") {
-      sendJson(res, 403, { error: "Solo una cuenta de Cliente activa puede solicitar la activación inicial." });
+    if (profileError || !profile || false) {
+      sendJson(res, 403, { error: "No se encontró un perfil válido para esta cuenta." });
       return true;
     }
     const { data: claimed, error: claimError } = await adminClient.rpc("claim_securoserv_initial_admin", { p_user_id: authData.user.id });
