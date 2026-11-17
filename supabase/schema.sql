@@ -160,7 +160,7 @@ create index if not exists service_events_service_created_idx on public.service_
 
 create or replace function public.stamp_service_changes()
 returns trigger language plpgsql security definer set search_path=''
-as $
+as $$
 begin
  if new.status is distinct from old.status then
   if new.status='active' and new.started_at is null then new.started_at:=now(); end if;
@@ -172,7 +172,7 @@ begin
 end $;
 create or replace function public.audit_service_changes()
 returns trigger language plpgsql security definer set search_path=''
-as $
+as $$
 declare v_event text;
 begin
  if TG_OP='INSERT' then
