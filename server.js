@@ -94,6 +94,21 @@ async function handleApi(req, res, url) {
     sendJson(res, 201, { ok: true, isInitialAdmin: false });
     return true;
   }
+  if (url.pathname === "/api/ensure-customer-account" && req.method === "POST") {
+    const authorization = req.headers.authorization || "";
+    const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+    if (!adminClient || !token) { sendJson(res, 401, { error: "Inicia sesión para continuar." }); return true; }
+    const { data: authData, error: authError } = await adminClient.auth.getUser(token);
+    if (authError || !authData?.user) { sendJson(res, 401, { error: "Tu sesión no es válida." }); return true; }
+    const { data: profile, error: profileError } = await adminClient.from("profiles").select("role,status").eq("id", authData.user.id).maybeSingle();
+    if (profileError || !profile) { sendJson(res, 404, { error: "No encontramos tu perfil." }); return true; }
+    if (profile.role === "customer" && profile.status !== "approved") {
+      const { error } = await adminClient.from("profiles").update({ status: "approved", rank: "Cliente" }).eq("id", authData.user.id).eq("role", "customer");
+      if (error) { sendJson(res, 500, { error: "No se pudo activar tu cuenta de Cliente." }); return true; }
+    }
+    sendJson(res, 200, { ok: true });
+    return true;
+  }
   if (url.pathname === "/api/claim-initial-admin" && req.method === "POST") {
     if (!adminClient || !initialAdminKey) {
       sendJson(res, 503, { error: "La activación de Dirección no está configurada en el servidor." });
@@ -112,7 +127,7 @@ async function handleApi(req, res, url) {
     if (bootstrapError || !bootstrap) { sendJson(res, 503, { error: "Falta aplicar la configuración inicial de SecuroServ en Supabase." }); return true; }
     if (bootstrap.admin_claimed) { sendJson(res, 409, { error: "La activación inicial ya fue utilizada. Tu cuenta permanece como Cliente." }); return true; }
     const { data: profile, error: profileError } = await adminClient.from("profiles").select("role,status").eq("id", authData.user.id).maybeSingle();
-    if (profileError || !profile || profile.role !== "customer" || profile.status !== "approved") {
+    if (profileError || !profile || profile.role !== "customer") {
       sendJson(res, 403, { error: "Solo una cuenta de Cliente activa puede solicitar la activación inicial." });
       return true;
     }
