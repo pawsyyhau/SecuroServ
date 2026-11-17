@@ -154,10 +154,36 @@ async function handleApi(req, res, url) {
     const { data: bootstrap, error: bootstrapError } = await adminClient.from("securoserv_bootstrap").select("admin_claimed").eq("id", 1).maybeSingle();
     if (bootstrapError || !bootstrap) { sendJson(res, 503, { error: "Falta aplicar la configuración inicial de SecuroServ en Supabase." }); return true; }
     if (bootstrap.admin_claimed) { sendJson(res, 409, { error: "La activación inicial ya fue utilizada. Tu cuenta permanece como Cliente." }); return true; }
-    const { data: profile, error: profileError } = await adminClient.from("profiles").select("role,status").eq("id", authData.user.id).maybeSingle();
-    if (profileError || !profile) {
-      sendJson(res, 403, { error: "No se encontró un perfil válido para esta cuenta." });
+    let { data: profile, error: profileError } = await adminClient.from("profiles").select("id,role,status").eq("id", authData.user.id).maybeSingle();
+    if (profileError) {
+      sendJson(res, 500, { error: "No se pudo consultar el perfil: " + profileError.message });
       return true;
+    }
+
+    // Si el trigger de Supabase no creó el perfil al registrar la cuenta,
+    // lo creamos desde los metadatos verificados del usuario autenticado.
+    if (!profile) {
+      const metadata = authData.user.user_metadata || {};
+      const fullName = typeof metadata.full_name === "string" && metadata.full_name.trim()
+        ? metadata.full_name.trim() : "Director SecuroServ";
+      const username = typeof metadata.username === "string" && metadata.username.trim()
+        ? metadata.username.trim().toLowerCase() : "director_" + authData.user.id.slice(0, 8);
+      const phone = typeof metadata.phone === "string" ? metadata.phone.replace(/\\D/g, "") : null;
+      const { error: insertError } = await adminClient.from("profiles").insert({
+        id: authData.user.id, full_name: fullName, username, phone: phone || null,
+        role: "customer", status: "approved", rank: "Cliente"
+      });
+      if (insertError && insertError.code !== "23505") {
+        sendJson(res, 500, { error: "No se pudo crear el perfil de tu cuenta: " + insertError.message });
+        return true;
+      }
+      const refreshed = await adminClient.from("profiles").select("id,role,status").eq("id", authData.user.id).maybeSingle();
+      profile = refreshed.data;
+      profileError = refreshed.error;
+      if (profileError || !profile) {
+        sendJson(res, 500, { error: "El perfil sigue sin estar disponible después de intentar crearlo." });
+        return true;
+      }
     }
     const { data: claimed, error: claimError } = await adminClient.rpc("claim_securoserv_initial_admin", { p_user_id: authData.user.id });
     if (claimError) { sendJson(res, 500, { error: "No se pudo activar Dirección. Revisa la configuración de Supabase." }); return true; }
