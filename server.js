@@ -2,31 +2,128 @@ import { createServer } from "node:http";
 import { readFile, stat } from "node:fs/promises";
 import { extname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { timingSafeEqual } from "node:crypto";
+import { createClient } from "@supabase/supabase-js";
 
 const root = resolve(fileURLToPath(new URL("./dist/", import.meta.url)));
 const port = Number(process.env.PORT || 3000);
 const mime = {
-  ".html": "text/html; charset=utf-8",
-  ".js": "text/javascript; charset=utf-8",
-  ".mjs": "text/javascript; charset=utf-8",
-  ".css": "text/css; charset=utf-8",
-  ".svg": "image/svg+xml",
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".webp": "image/webp",
-  ".ico": "image/x-icon",
-  ".woff": "font/woff",
-  ".woff2": "font/woff2",
-  ".json": "application/json; charset=utf-8"
+  ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",
+  ".mjs": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8",
+  ".svg": "image/svg+xml", ".png": "image/png", ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg", ".webp": "image/webp", ".ico": "image/x-icon",
+  ".woff": "font/woff", ".woff2": "font/woff2", ".json": "application/json; charset=utf-8"
 };
+
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const initialAdminKey = process.env.INITIAL_ADMIN_KEY;
+const adminClient = supabaseUrl && serviceRoleKey
+  ? createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
+  : null;
+
+function sendJson(res, status, payload) {
+  res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+  res.end(JSON.stringify(payload));
+}
+function safeKeyMatch(provided, expected) {
+  if (typeof provided !== "string" || !expected) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+async function readJson(req) {
+  let raw = "";
+  for await (const chunk of req) {
+    raw += chunk;
+    if (raw.length > 20000) throw new Error("La solicitud es demasiado grande.");
+  }
+  return JSON.parse(raw || "{}");
+}
+async function handleApi(req, res, url) {
+  if (url.pathname === "/api/health" && req.method === "GET") {
+    sendJson(res, 200, { ok: true, service: "securoserv" });
+    return true;
+  }
+  if (url.pathname === "/api/registration-status" && req.method === "GET") {
+    if (!adminClient) {
+      sendJson(res, 503, { error: "El servidor todavía no está configurado para registrar cuentas." });
+      return true;
+    }
+    const { data, error } = await adminClient.from("securoserv_bootstrap").select("admin_claimed").eq("id", 1).maybeSingle();
+    if (error || !data) {
+      sendJson(res, 503, { error: "Falta aplicar la configuración inicial de SecuroServ en Supabase." });
+      return true;
+    }
+    sendJson(res, 200, { initialAdminAvailable: !data.admin_claimed });
+    return true;
+  }
+  if (url.pathname === "/api/register" && req.method === "POST") {
+    if (!adminClient || !initialAdminKey) {
+      sendJson(res, 503, { error: "Dirección debe configurar las claves privadas del servidor antes de habilitar el registro." });
+      return true;
+    }
+    let body;
+    try { body = await readJson(req); }
+    catch (error) { sendJson(res, 400, { error: error.message || "Solicitud inválida." }); return true; }
+
+    const name = typeof body.name === "string" ? body.name.trim() : "";
+    const username = typeof body.username === "string" ? body.username.trim().toLowerCase() : "";
+    const phone = typeof body.phone === "string" ? body.phone.replace(/\D/g, "") : "";
+    const password = typeof body.password === "string" ? body.password : "";
+    if (name.length < 2 || name.length > 100 || !/^[a-z0-9_.-]{3,30}$/.test(username) || phone.length < 5 || phone.length > 20 || password.length < 8 || password.length > 128) {
+      sendJson(res, 400, { error: "Revisa el nombre, usuario, teléfono y contraseña. La contraseña debe tener al menos 8 caracteres." });
+      return true;
+    }
+
+    const { data: bootstrap, error: bootstrapError } = await adminClient.from("securoserv_bootstrap").select("admin_claimed").eq("id", 1).maybeSingle();
+    if (bootstrapError || !bootstrap) {
+      sendJson(res, 503, { error: "Falta aplicar la configuración inicial de SecuroServ en Supabase." });
+      return true;
+    }
+    const firstRegistration = !bootstrap.admin_claimed;
+    if (firstRegistration && !safeKeyMatch(body.initialAdminKey, initialAdminKey)) {
+      sendJson(res, 403, { error: "La clave inicial de Dirección no es válida. La primera cuenta necesita esa clave." });
+      return true;
+    }
+
+    const email = username + "@users.securoserv.com";
+    const { data: created, error: createError } = await adminClient.auth.admin.createUser({
+      email, password, email_confirm: true,
+      user_metadata: { full_name: name, username, phone }
+    });
+    if (createError || !created.user) {
+      sendJson(res, 400, { error: createError?.message || "No se pudo crear la cuenta." });
+      return true;
+    }
+
+    let isInitialAdmin = false;
+    if (firstRegistration) {
+      const { data: claimed, error: claimError } = await adminClient.rpc("claim_securoserv_initial_admin", { p_user_id: created.user.id });
+      if (claimError) {
+        await adminClient.auth.admin.deleteUser(created.user.id);
+        sendJson(res, 500, { error: "No se pudo activar la primera cuenta de Dirección. No se creó la cuenta; revisa la migración SQL." });
+        return true;
+      }
+      isInitialAdmin = claimed === true;
+    }
+    sendJson(res, 201, { ok: true, isInitialAdmin });
+    return true;
+  }
+  if (url.pathname.startsWith("/api/")) {
+    sendJson(res, 404, { error: "Ruta API no encontrada." });
+    return true;
+  }
+  return false;
+}
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url || "/", "http://localhost");
-
-  if (url.pathname === "/api/health") {
-    res.writeHead(200, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
-    res.end(JSON.stringify({ ok: true, service: "securoserv" }));
+  try {
+    if (await handleApi(req, res, url)) return;
+  } catch (error) {
+    console.error("API error:", error?.message || error);
+    sendJson(res, 500, { error: "Error interno del servidor." });
     return;
   }
 
@@ -37,21 +134,13 @@ const server = createServer(async (req, res) => {
   }
 
   let pathname;
-  try {
-    pathname = decodeURIComponent(url.pathname);
-  } catch {
-    res.writeHead(400);
-    res.end("Bad request");
-    return;
-  }
+  try { pathname = decodeURIComponent(url.pathname); }
+  catch { res.writeHead(400); res.end("Bad request"); return; }
 
   let filePath = resolve(root, "." + pathname);
   if (filePath !== root && !filePath.startsWith(root + sep)) {
-    res.writeHead(403);
-    res.end("Forbidden");
-    return;
+    res.writeHead(403); res.end("Forbidden"); return;
   }
-
   try {
     const info = await stat(filePath);
     if (info.isDirectory()) filePath = resolve(filePath, "index.html");
@@ -73,7 +162,4 @@ const server = createServer(async (req, res) => {
     }
   }
 });
-
-server.listen(port, "0.0.0.0", () => {
-  console.log(`SecuroServ Web Service listening on port ${port}`);
-});
+server.listen(port, "0.0.0.0", () => console.log(`SecuroServ Web Service listening on port ${port}`));
