@@ -200,7 +200,7 @@ begin
  end if;
  return new;
 end;
-$$;
+$func$;
 drop trigger if exists services_audit_trigger on public.services;
 drop trigger if exists services_stamp_trigger on public.services;
 create trigger services_stamp_trigger before update on public.services
@@ -216,7 +216,7 @@ begin
  select coalesce(full_name,'Personal SecuroServ') into new.sender_name from public.profiles where id=auth.uid();
  if new.sender_name is null then new.sender_name:='Personal SecuroServ'; end if;
  return new;
-end $func$;
+end $$;
 drop trigger if exists service_message_sender_trigger on public.service_messages;
 create trigger service_message_sender_trigger before insert on public.service_messages
 for each row execute function public.set_service_message_sender();
