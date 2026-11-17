@@ -210,3 +210,21 @@ with check (
  ))
  and exists(select 1 from public.services s where s.id=service_id and s.status<>'completed')
 );
+
+-- Los adjuntos del chat siguen las mismas reglas de acceso que su sala.
+drop policy if exists "staff service chat image read" on storage.objects;
+drop policy if exists "staff service chat image upload" on storage.objects;
+create policy "assigned service chat image read" on storage.objects for select
+using (bucket_id='service-chat' and (
+ public.is_manager() or exists(
+  select 1 from public.service_assignments a
+  where a.service_id=(storage.foldername(name))[1]::uuid and a.agent_id=auth.uid()
+ )
+));
+create policy "assigned service chat image upload" on storage.objects for insert
+with check (bucket_id='service-chat' and (
+ public.is_manager() or exists(
+  select 1 from public.service_assignments a
+  where a.service_id=(storage.foldername(name))[1]::uuid and a.agent_id=auth.uid()
+ )
+));
