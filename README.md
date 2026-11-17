@@ -7,29 +7,56 @@ Portal público y sistema interno para SecuroServ — Private Security Corporati
 - Proyecto Supabase
 
 ## Instalación
-```bash
+\`\`\`bash
 npm install
 cp .env.example .env
 npm run dev
-```
-Completa `.env` con la URL y la clave anon/public de Supabase.
+\`\`\`
+Completa \`.env\` con la URL y la clave publicable de Supabase.
 
-## Base de datos
-Ejecuta `supabase/schema.sql` en Supabase SQL Editor.
+## Configuración de Supabase
+1. Ejecuta todo el archivo \`supabase/schema.sql\` en el SQL Editor.
+2. En Authentication → Providers, activa **Phone** y configura un proveedor SMS.
+3. En Authentication → URL Configuration, agrega el dominio publicado de Render.
+4. Activa la confirmación por SMS y prueba el envío de códigos.
+5. Después de crear tu primera cuenta, conviértela en directora desde SQL Editor:
 
-Después de crear la primera cuenta, asigna manualmente a ese usuario `role='director'` y `status='approved'` en `public.profiles`. Nunca coloques la clave `service_role` en el navegador.
+\`\`\`sql
+update public.profiles
+set role = 'director', status = 'approved', rank = 'Dirección'
+where phone = '+507TU_NUMERO';
+\`\`\`
 
-## Funciones iniciales
-- Portal público y panel de acceso de agentes con aprobación.
-- Calendario público para consultar horarios ocupados.
-- Formulario de solicitud de servicio.
-- Indicadores de agentes aprobados y servicios confirmados.
-- Base SQL para perfiles, agenda, fichajes, clientes, reseñas, quejas y chat.
+El registro solicita únicamente nombre completo, usuario, celular y contraseña. El número debe llevar prefijo internacional (por ejemplo, +507). El correo y otros datos se completan dentro del perfil. El IBAN solo se muestra para perfiles con rol de agente.
 
-El chat requiere activar Supabase Realtime y completar el flujo de atención en vivo. Antes de producción, endurecer RLS, validación de solapamientos y controles anti-spam.
+## Funciones incluidas
+- Registro e inicio de sesión con celular y contraseña (requiere proveedor SMS de Supabase).
+- Perfil editable con correo, Discord, Discord ID y foto por URL.
+- IBAN editable únicamente por agentes.
+- Gestión de cuentas: Dirección puede asignar roles de cliente, agente, comandante, administrador o director.
+- Etiquetas de negocios creadas y asignadas por administradores.
+- Creación de servicios con nombre, club y descripción.
+- Estados programado, activo, pausado y finalizado.
+- Pausar y reanudar servicios en fechas posteriores sin perder el historial.
+- Historial automático de creación, inicio, pausa, reanudación y finalización.
+- Sala de chat individual por servicio, con mensajes, emojis y fotografías.
+- Fotografías guardadas en el bucket privado \`service-chat\`.
+- Mensajes e historial en tiempo real mediante Supabase Realtime.
+- Calendario público y solicitud de servicios.
 
-## Agenda y privacidad
-La página pública consulta únicamente `availability_slots` (fecha y hora). Los datos identificativos de clientes permanecen en `appointments`, que solo puede leer personal aprobado. El trigger mantiene los intervalos públicos sincronizados con solicitudes pendientes y confirmadas. La base incluye una restricción para impedir reservas superpuestas.
+## Seguridad
+- No publiques la clave \`service_role\`; el frontend utiliza solamente la clave publicable.
+- Las políticas RLS limitan la gestión de servicios y etiquetas a administradores aprobados.
+- Las salas de servicio solo pueden consultarse por personal aprobado.
+- El almacenamiento de imágenes es privado y las imágenes se sirven con enlaces temporales.
+- La primera cuenta debe convertirse manualmente en directora antes de administrar el portal.
 
-## Estado
-Esta es la primera entrega del portal y la estructura de datos. El panel completo de agentes, fichajes, clientes, reseñas, quejas, gestión de reservas y chat realmente en vivo aún requiere desarrollo adicional y configuración de Supabase.
+## Despliegue en Render
+- Tipo: Static Site
+- Build command: \`npm install && npm run build\`
+- Publish directory: \`dist\`
+- Variables:
+  - \`VITE_SUPABASE_URL\`
+  - \`VITE_SUPABASE_ANON_KEY\`
+
+Cada commit a \`main\` inicia un nuevo despliegue en Render.
