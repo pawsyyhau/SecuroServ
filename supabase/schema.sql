@@ -312,10 +312,14 @@ create policy "agent clock in" on public.shifts for insert with check(agent_id=a
 create policy "agent clock out" on public.shifts for update using(agent_id=auth.uid() or public.is_manager());
 drop policy if exists "staff customers" on public.customers;
 create policy "staff customers" on public.customers for all using(public.is_staff()) with check(public.is_staff());
+-- Las reseñas no aceptan inserciones públicas: se habilitarán mediante un flujo
+-- autenticado vinculado a una cita completada y a sus agentes asignados.
 drop policy if exists "public review insert" on public.reviews;
 drop policy if exists "staff review read" on public.reviews;
-create policy "public review insert" on public.reviews for insert with check(true);
+drop policy if exists "manager manage reviews" on public.reviews;
 create policy "staff review read" on public.reviews for select using(public.is_staff());
+create policy "manager manage reviews" on public.reviews for all
+ using(public.is_manager()) with check(public.is_manager());
 drop policy if exists "staff complaints" on public.complaints;
 create policy "staff complaints" on public.complaints for all using(public.is_staff()) with check(public.is_staff());
 
@@ -375,5 +379,5 @@ grant select,insert,update,delete on public.shifts,public.customers,public.revie
 grant insert on public.chat_messages to anon;
 
 
--- Primera cuenta: después de registrarte, convierte tu perfil en director desde el SQL Editor.
--- update public.profiles set role='director',status='approved',rank='Dirección' where phone='+507...';
+-- La activación inicial de Dirección se realiza desde la aplicación con la clave privada
+-- configurada en Render; no cambies manualmente el rol desde el navegador.
