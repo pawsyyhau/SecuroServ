@@ -42,12 +42,13 @@ export default function TariffTime({session,profile,isManager,services,onNotice,
  const tariffById=useMemo(()=>Object.fromEntries(tariffs.map(t=>[t.id,t])),[tariffs]);
  const serviceAgents=serviceId=>assignments.filter(a=>a.service_id===serviceId);
  const serviceHours=serviceId=>entries.filter(e=>e.service_id===serviceId).reduce((sum,e)=>sum+elapsed(e.started_at,e.ended_at),0)/3600000;
+ const serviceWallHours=serviceId=>{const intervals=entries.filter(e=>e.service_id===serviceId).map(e=>[new Date(e.started_at).getTime(),new Date(e.ended_at||Date.now()).getTime()]).sort((a,b)=>a[0]-b[0]);let total=0,start=null,end=null;for(const [a,b] of intervals){if(start===null){start=a;end=b}else if(a<=end){end=Math.max(end,b)}else{total+=end-start;start=a;end=b}}if(start!==null)total+=end-start;return total/3600000};
  const serviceCharge=serviceId=>{
   const s=serviceById[serviceId];if(!s?.billing_mode_snapshot)return null;
-  const hours=serviceHours(serviceId),count=serviceAgents(serviceId).length;
+  const hours=serviceWallHours(serviceId),count=serviceAgents(serviceId).length;
   if(s.billing_mode_snapshot==="hourly")return hours*Number(s.hourly_rate_snapshot||0);
   if(s.billing_mode_snapshot==="per_agent")return count*Number(s.per_agent_rate_snapshot||0);
-  return hours*count*Number(s.hourly_rate_snapshot||0)*Number(s.per_agent_rate_snapshot||0);
+  return hours*count*Number(s.hourly_rate_snapshot||0);
  };
  const createTariff=async e=>{
   e.preventDefault();if(!isManager)return;
@@ -124,7 +125,7 @@ export default function TariffTime({session,profile,isManager,services,onNotice,
      <label>Agente<select required value={agentPick} onChange={e=>setAgentPick(e.target.value)}><option value="">Seleccionar agente</option>{agents.map(a=><option key={a.id} value={a.id}>{a.full_name} · @{a.username}</option>)}</select></label>
      <button className="outline"><Plus size={15}/> Asignar agente</button>
     </form>
-    {services.map(s=><article className="tt-service" key={s.id}><div><b>{s.name}</b><small>{s.tariff_name_snapshot||"Sin tarifa aplicada"} · {serviceAgents(s.id).length} agentes · {duration(serviceHours(s.id)*3600000)} registradas</small><small>Estimado: {s.billing_mode_snapshot?money(serviceCharge(s.id)):"Sin tarifar"}</small></div><div className="tt-assigned">{serviceAgents(s.id).map(a=><span key={a.id}>{profileById[a.agent_id]?.full_name||a.agent_id.slice(0,8)} <button onClick={()=>removeAssignment(a.id)} title="Quitar asignación"><Trash2 size={12}/></button></span>)}</div></article>)}
+    {services.map(s=><article className="tt-service" key={s.id}><div><b>{s.name}</b><small>{s.tariff_name_snapshot||"Sin tarifa aplicada"} · {serviceAgents(s.id).length} agentes · {duration(serviceHours(s.id)*3600000)} agente-horas · {duration(serviceWallHours(s.id)*3600000)} horas de servicio</small><small>Estimado: {s.billing_mode_snapshot?money(serviceCharge(s.id)):"Sin tarifar"}</small></div><div className="tt-assigned">{serviceAgents(s.id).map(a=><span key={a.id}>{profileById[a.agent_id]?.full_name||a.agent_id.slice(0,8)} <button onClick={()=>removeAssignment(a.id)} title="Quitar asignación"><Trash2 size={12}/></button></span>)}</div></article>)}
    </div>
    <div className="panel"><h3><HistoryIcon/> Registro global de horas</h3><p className="muted">Vista de Dirección de los últimos 250 registros de tiempo.</p>{entries.map(e=><div className="tt-history" key={e.id}><span>{profileById[e.agent_id]?.full_name||e.agent_id.slice(0,8)} · {serviceById[e.service_id]?.name||"Servicio"}</span><span>{new Date(e.started_at).toLocaleString("es-PA")}</span><b>{duration(elapsed(e.started_at,e.ended_at))}</b></div>)}</div>
   </>}
