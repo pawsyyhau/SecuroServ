@@ -16,6 +16,8 @@ export default function SupportHub({supabase,session,profile,isManager}) {
   const [clientDetails,setClientDetails]=useState(null);
   const [history,setHistory]=useState([]);
   const [reviews,setReviews]=useState([]);
+  const [reviewRating,setReviewRating]=useState("5");
+  const [reviewComment,setReviewComment]=useState("");
   const [query,setQuery]=useState("");
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState("");
@@ -85,6 +87,20 @@ export default function SupportHub({supabase,session,profile,isManager}) {
     return()=>{alive=false;supabase.removeChannel(channel)};
   },[isManager,supabase]);
 
+  async function submitReview(event){
+    event.preventDefault();
+    if(!clientDetails||!reviewComment.trim())return;
+    const {error}=await supabase.from("reviews").insert({
+      customer_user_id:clientDetails.id,
+      rating:Number(reviewRating),
+      comment:reviewComment.trim()
+    });
+    if(error){setError(error.message);return;}
+    setReviewComment("");
+    const {data,error:refreshError}=await supabase.from("reviews").select("id,rating,comment,created_at,agent_id,appointment_id").eq("customer_user_id",clientDetails.id).order("created_at",{ascending:false});
+    if(refreshError)setError(refreshError.message);else setReviews(data||[]);
+    setNotice("Reseña agregada al expediente del cliente.");
+  }
   async function sendMessage(event){
     event.preventDefault();
     if(!draft.trim()||!selected)return;
@@ -123,6 +139,6 @@ export default function SupportHub({supabase,session,profile,isManager}) {
       <form className="thread-compose" onSubmit={sendMessage}><input value={draft} onChange={e=>setDraft(e.target.value)} placeholder="Escribe tu mensaje..."/><button className="red" disabled={!draft.trim()}><Send size={16}/> Enviar</button></form>
     </div>}
     {tab==="members"&&isManager&&<div className="directory-grid">{filteredMembers.map(p=><article className="directory-card" key={p.id}><div className="directory-person"><img src={p.photo_url||"/avatar-placeholder.svg"} onError={e=>{e.currentTarget.src="/avatar-placeholder.svg"}} alt=""/><div><b>{p.full_name}</b><small>@{p.username}</small><span className={"member-status "+p.status}>{p.status==="approved"?"Activo":p.status==="pending"?"Pendiente":p.status==="suspended"?"Suspendido":"Inactivo"}</span></div></div><div className="directory-meta"><span><ShieldCheck size={14}/>{p.rank||roleLabel(p.role)}</span><span><UserRound size={14}/>{roleLabel(p.role)}</span><span><Clock3 size={14}/>{dateLabel(p.created_at)}</span>{p.phone&&<span>{p.phone}</span>}{p.discord&&<span>Discord: {p.discord}</span>}</div></article>)}</div>}
-    {tab==="clients"&&isManager&&<div className="client-directory"><div className="support-search"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar cliente"/></div><div className="client-layout"><aside className="client-list">{filteredClients.map(c=><button key={c.id} className={clientDetails?.id===c.id?"active":""} onClick={()=>chooseClient(c)}><span className="support-avatar">{c.full_name?.slice(0,1)||"?"}</span><span><b>{c.full_name}</b><small>@{c.username} · {c.phone||"Sin teléfono"}</small></span></button>)}</aside><div className="client-record">{clientDetails?<><div className="thread-heading"><img className="client-photo" src={clientDetails.photo_url||"/avatar-placeholder.svg"} onError={e=>{e.currentTarget.src="/avatar-placeholder.svg"}} alt=""/><div><b>{clientDetails.full_name}</b><small>@{clientDetails.username} · {clientDetails.contact_email||"Sin correo"}</small></div></div><h3>Historial de servicios</h3>{history.length?history.map(a=><article className="history-card" key={a.id}><b>{new Date(a.date+"T00:00:00").toLocaleDateString("es-PA")} · {a.start_time?.slice(0,5)}–{a.end_time?.slice(0,5)}</b><span className={"appointment-status "+a.status}>{({pending:"Pendiente",confirmed:"Confirmado",completed:"Completado",rejected:"Rechazado",cancelled:"Cancelado"}[a.status]||a.status)}</span><p>{a.details||"Sin detalles adicionales"}</p></article>):<p className="muted">Este cliente todavía no tiene servicios registrados.</p>}<h3>Reseñas</h3>{reviews.length?reviews.map(r=><article className="review-card" key={r.id}><span className="review-stars">{"★".repeat(r.rating)}{"☆".repeat(5-r.rating)}</span><p>{r.comment||"Sin comentario"}</p><small>{dateLabel(r.created_at)}</small></article>):<p className="muted">Este cliente todavía no tiene reseñas registradas.</p>}</>:<div className="thread-placeholder"><Contact size={30}/><p>Selecciona un cliente para consultar su expediente.</p></div>}</div></div></div>}
+    {tab==="clients"&&isManager&&<div className="client-directory"><div className="support-search"><Search size={16}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar cliente"/></div><div className="client-layout"><aside className="client-list">{filteredClients.map(c=><button key={c.id} className={clientDetails?.id===c.id?"active":""} onClick={()=>chooseClient(c)}><span className="support-avatar">{c.full_name?.slice(0,1)||"?"}</span><span><b>{c.full_name}</b><small>@{c.username} · {c.phone||"Sin teléfono"}</small></span></button>)}</aside><div className="client-record">{clientDetails?<><div className="thread-heading"><img className="client-photo" src={clientDetails.photo_url||"/avatar-placeholder.svg"} onError={e=>{e.currentTarget.src="/avatar-placeholder.svg"}} alt=""/><div><b>{clientDetails.full_name}</b><small>@{clientDetails.username} · {clientDetails.contact_email||"Sin correo"}</small></div></div><h3>Historial de servicios</h3>{history.length?history.map(a=><article className="history-card" key={a.id}><b>{new Date(a.date+"T00:00:00").toLocaleDateString("es-PA")} · {a.start_time?.slice(0,5)}–{a.end_time?.slice(0,5)}</b><span className={"appointment-status "+a.status}>{({pending:"Pendiente",confirmed:"Confirmado",completed:"Completado",rejected:"Rechazado",cancelled:"Cancelado"}[a.status]||a.status)}</span><p>{a.details||"Sin detalles adicionales"}</p></article>):<p className="muted">Este cliente todavía no tiene servicios registrados.</p>}<h3>Reseñas</h3>{reviews.length?reviews.map(r=><article className="review-card" key={r.id}><span className="review-stars">{"★".repeat(r.rating)}{"☆".repeat(5-r.rating)}</span><p>{r.comment||"Sin comentario"}</p><small>{dateLabel(r.created_at)}</small></article>):<p className="muted">Este cliente todavía no tiene reseñas registradas.</p>}<form className="review-entry" onSubmit={submitReview}><label>Calificación<select value={reviewRating} onChange={e=>setReviewRating(e.target.value)}><option value="5">5 estrellas</option><option value="4">4 estrellas</option><option value="3">3 estrellas</option><option value="2">2 estrellas</option><option value="1">1 estrella</option></select></label><label>Comentario<textarea value={reviewComment} onChange={e=>setReviewComment(e.target.value)} placeholder="Registrar comentario del cliente..." rows="3"/></label><button className="red" disabled={!reviewComment.trim()}>Guardar reseña</button></form></>:<div className="thread-placeholder"><Contact size={30}/><p>Selecciona un cliente para consultar su expediente.</p></div>}</div></div></div>}
   </section>;
 }
