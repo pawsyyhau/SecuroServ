@@ -77,10 +77,41 @@ create table if not exists public.complaints(
  status text not null default 'pending' check(status in('pending','reviewing','resolved')), created_at timestamptz default now()
 );
 
-create or replace function public.is_staff() returns boolean language sql stable security definer set search_path=''
-as $$ select exists(select 1 from public.profiles where id=auth.uid() and status='approved' and role in('agent','commander','admin','director')) $$;
-create or replace function public.is_manager() returns boolean language sql stable security definer set search_path=''
-as $$ select exists(select 1 from public.profiles where id=auth.uid() and status='approved' and role in('director','admin','commander')) $$;
+create or replace function public.is_staff()
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $fn$
+begin
+ return exists (
+  select 1
+  from public.profiles
+  where id = auth.uid()
+    and status = 'approved'
+    and role in ('agent','commander','admin','director')
+ );
+end;
+$fn$;
+
+create or replace function public.is_manager()
+returns boolean
+language plpgsql
+stable
+security definer
+set search_path = public
+as $fn$
+begin
+ return exists (
+  select 1
+  from public.profiles
+  where id = auth.uid()
+    and status = 'approved'
+    and role in ('director','admin','commander')
+ );
+end;
+$fn$;
 
 -- Impide que una persona cambie su propio rol o aprobación desde el formulario de perfil.
 create or replace function public.protect_profile_permissions()
