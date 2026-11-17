@@ -21,7 +21,7 @@ alter table public.profiles add constraint profiles_status_check check(status in
 -- Cada cuenta nueva comienza como cliente. Dirección puede convertirla en agente y aprobarla.
 create or replace function public.create_profile_for_new_user()
 returns trigger language plpgsql security definer set search_path=''
-as $
+as $func$
 begin
  insert into public.profiles(id,full_name,username,phone,role,status,rank)
  values(
@@ -33,7 +33,7 @@ begin
  )
  on conflict(id) do nothing;
  return new;
-end $$;
+end $func$;
 drop trigger if exists on_auth_user_created_profile on auth.users;
 create trigger on_auth_user_created_profile after insert on auth.users
 for each row execute function public.create_profile_for_new_user();
@@ -176,7 +176,7 @@ returns trigger
 language plpgsql
 security definer
 set search_path = ''
-as $
+as $func$
 begin
  if TG_OP = 'INSERT' then
   insert into public.service_events(service_id,event_type,actor_id)
@@ -216,7 +216,7 @@ begin
  select coalesce(full_name,'Personal SecuroServ') into new.sender_name from public.profiles where id=auth.uid();
  if new.sender_name is null then new.sender_name:='Personal SecuroServ'; end if;
  return new;
-end $$;
+end $func$;
 drop trigger if exists service_message_sender_trigger on public.service_messages;
 create trigger service_message_sender_trigger before insert on public.service_messages
 for each row execute function public.set_service_message_sender();
