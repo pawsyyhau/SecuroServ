@@ -157,27 +157,36 @@ create table if not exists public.service_messages(
 create index if not exists service_messages_service_created_idx on public.service_messages(service_id,created_at);
 create index if not exists service_events_service_created_idx on public.service_events(service_id,created_at);
 
-create or replace function public.audit_service_changes()
+create or replace function public.stamp_service_changes()
 returns trigger language plpgsql security definer set search_path=''
-as $$
-declare v_event text;
+as $
 begin
- if TG_OP='INSERT' then
-  insert into public.service_events(service_id,event_type,actor_id) values(new.id,'created',auth.uid());
-  return new;
- end if;
  if new.status is distinct from old.status then
-  v_event:=case new.status when 'active' then case when old.status='paused' then 'resumed' else 'started' end when 'paused' then 'paused' when 'completed' then 'completed' end;
-  if v_event is not null then insert into public.service_events(service_id,event_type,actor_id) values(new.id,v_event,auth.uid()); end if;
   if new.status='active' and new.started_at is null then new.started_at:=now(); end if;
   if new.status='paused' then new.paused_at:=now(); end if;
   if new.status='completed' then new.completed_at:=now(); end if;
  end if;
  new.updated_at:=now();
  return new;
-end $$;
+end $;
+create or replace function public.audit_service_changes()
+returns trigger language plpgsql security definer set search_path=''
+as $
+declare v_event text;
+begin
+ if TG_OP='INSERT' then
+  insert into public.service_events(service_id,event_type,actor_id) values(new.id,'created',auth.uid());
+ elsif new.status is distinct from old.status then
+  v_event:=case new.status when 'active' then case when old.status='paused' then 'resumed' else 'started' end when 'paused' then 'paused' when 'completed' then 'completed' end;
+  if v_event is not null then insert into public.service_events(service_id,event_type,actor_id) values(new.id,v_event,auth.uid()); end if;
+ end if;
+ return new;
+end $;
 drop trigger if exists services_audit_trigger on public.services;
-create trigger services_audit_trigger before insert or update on public.services
+drop trigger if exists services_stamp_trigger on public.services;
+create trigger services_stamp_trigger before update on public.services
+for each row execute function public.stamp_service_changes();
+create trigger services_audit_trigger after insert or update on public.services
 for each row execute function public.audit_service_changes();
 
 create or replace function public.set_service_message_sender()
