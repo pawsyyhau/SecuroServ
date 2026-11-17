@@ -94,6 +94,18 @@ async function handleApi(req, res, url) {
     sendJson(res, 201, { ok: true, isInitialAdmin: false });
     return true;
   }
+  if (url.pathname === "/api/my-profile" && req.method === "POST") {
+    const authorization = req.headers.authorization || "";
+    const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+    if (!adminClient || !token) { sendJson(res, 401, { error: "Inicia sesión para consultar tu perfil." }); return true; }
+    const { data: authData, error: authError } = await adminClient.auth.getUser(token);
+    if (authError || !authData?.user) { sendJson(res, 401, { error: "Tu sesión no es válida." }); return true; }
+    const { data: profile, error } = await adminClient.from("profiles").select("*").eq("id", authData.user.id).maybeSingle();
+    if (error) { sendJson(res, 500, { error: "No se pudo consultar tu perfil: " + error.message }); return true; }
+    if (!profile) { sendJson(res, 404, { error: "Tu perfil todavía no existe." }); return true; }
+    sendJson(res, 200, { profile });
+    return true;
+  }
   if (url.pathname === "/api/ensure-customer-account" && req.method === "POST") {
     const authorization = req.headers.authorization || "";
     const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
