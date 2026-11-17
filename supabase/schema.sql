@@ -12,6 +12,7 @@ create table if not exists public.profiles(
 );
 alter table public.profiles add column if not exists phone text;
 alter table public.profiles add column if not exists contact_email text;
+create unique index if not exists profiles_phone_unique_idx on public.profiles(phone) where phone is not null;
 alter table public.profiles drop constraint if exists profiles_role_check;
 alter table public.profiles add constraint profiles_role_check check(role in('agent','commander','admin','director','customer'));
 alter table public.profiles drop constraint if exists profiles_status_check;
@@ -314,6 +315,16 @@ as $$
 $$;
 revoke all on function public.get_public_dashboard_stats() from public;
 grant execute on function public.get_public_dashboard_stats() to anon, authenticated;
+
+grant select,update on public.profiles to authenticated;
+grant select,insert,update,delete on public.appointments to authenticated;
+grant insert on public.appointments to anon;
+grant select on public.availability_slots to anon,authenticated;
+grant select,insert,update,delete on public.services,public.service_messages,public.business_tags,public.profile_business_tags to authenticated;
+grant select on public.service_events to authenticated;
+grant select,insert,update,delete on public.shifts,public.customers,public.reviews,public.complaints,public.chat_messages to authenticated;
+grant insert on public.chat_messages to anon;
+
 
 -- Primera cuenta: después de registrarte, convierte tu perfil en director desde el SQL Editor.
 -- update public.profiles set role='director',status='approved',rank='Dirección' where phone='+507...';
