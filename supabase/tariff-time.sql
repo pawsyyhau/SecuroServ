@@ -175,3 +175,38 @@ drop trigger if exists service_assignment_validate_trigger on public.service_ass
 create trigger service_assignment_validate_trigger
 before insert or update of agent_id on public.service_assignments
 for each row execute function public.validate_service_assignment();
+
+-- Las salas operativas solo son visibles para Dirección/mandos o personal asignado.
+drop policy if exists "staff read services" on public.services;
+drop policy if exists "assigned staff read services" on public.services;
+create policy "assigned staff read services" on public.services for select to authenticated
+using (public.is_manager() or exists(
+ select 1 from public.service_assignments a
+ where a.service_id=id and a.agent_id=auth.uid()
+));
+
+drop policy if exists "staff read service events" on public.service_events;
+drop policy if exists "assigned staff read service events" on public.service_events;
+create policy "assigned staff read service events" on public.service_events for select to authenticated
+using (public.is_manager() or exists(
+ select 1 from public.service_assignments a
+ where a.service_id=service_id and a.agent_id=auth.uid()
+));
+
+drop policy if exists "staff read service messages" on public.service_messages;
+drop policy if exists "staff send service messages" on public.service_messages;
+drop policy if exists "assigned staff read service messages" on public.service_messages;
+drop policy if exists "assigned staff send service messages" on public.service_messages;
+create policy "assigned staff read service messages" on public.service_messages for select to authenticated
+using (public.is_manager() or exists(
+ select 1 from public.service_assignments a
+ where a.service_id=service_id and a.agent_id=auth.uid()
+));
+create policy "assigned staff send service messages" on public.service_messages for insert to authenticated
+with check (
+ (public.is_manager() or exists(
+  select 1 from public.service_assignments a
+  where a.service_id=service_id and a.agent_id=auth.uid()
+ ))
+ and exists(select 1 from public.services s where s.id=service_id and s.status<>'completed')
+);
