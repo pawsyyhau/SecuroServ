@@ -115,7 +115,7 @@ async function handleApi(req, res, url) {
         ? metadata.full_name.trim() : "Usuario";
       const username = typeof metadata.username === "string" && metadata.username.trim()
         ? metadata.username.trim().toLowerCase() : "user_" + user.id.slice(0, 8);
-      const phone = typeof metadata.phone === "string" ? metadata.phone.replace(/\\D/g, "") : null;
+      const phone = typeof metadata.phone === "string" ? metadata.phone.replace(/\D/g, "") : null;
       const { error: insertError } = await adminClient.from("profiles").insert({
         id: user.id, full_name: fullName, username, phone: phone || null,
         role: "customer", status: "approved", rank: "Cliente"
