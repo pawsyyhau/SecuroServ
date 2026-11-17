@@ -200,7 +200,7 @@ begin
  end if;
  return new;
 end;
-$;
+$$;
 drop trigger if exists services_audit_trigger on public.services;
 drop trigger if exists services_stamp_trigger on public.services;
 create trigger services_stamp_trigger before update on public.services
