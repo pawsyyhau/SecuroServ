@@ -206,7 +206,7 @@ create policy "assigned staff send service messages" on public.service_messages 
 with check (
  (public.is_manager() or exists(
   select 1 from public.service_assignments a
-  where a.service_id=service_id and a.agent_id=auth.uid()
+  where a.service_id=public.service_messages.service_id and a.agent_id=auth.uid()
  ))
  and exists(select 1 from public.services s where s.id=service_id and s.status<>'completed')
 );
