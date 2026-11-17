@@ -1,6 +1,6 @@
 import React,{useCallback,useEffect,useMemo,useState} from "react";
 import {supabase} from "./supabase";
-import {Clock3,Timer,Plus,Users,Receipt,Play,Square,Trash2,RefreshCw} from "lucide-react";
+import {Clock3,Timer,Plus,Users,Receipt,Play,Square,Trash2,RefreshCw,Pencil} from "lucide-react";
 
 const money=n=>new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:2}).format(Number(n||0));
 const duration=(ms)=>{const total=Math.max(0,Math.floor(ms/1000));const h=Math.floor(total/3600),m=Math.floor(total%3600/60),s=total%60;return [h,m,s].map(v=>String(v).padStart(2,"0")).join(":")};
@@ -12,7 +12,7 @@ export default function TariffTime({session,profile,isManager,services,onNotice,
  const [agents,setAgents]=useState([]),[now,setNow]=useState(Date.now()),[loading,setLoading]=useState(false);
  const [form,setForm]=useState({name:"",description:"",billing_mode:"hourly",hourly_rate:"",per_agent_rate:""});
  const [servicePick,setServicePick]=useState(""),[tariffPick,setTariffPick]=useState(""),[agentPick,setAgentPick]=useState("");
- const [selected,setSelected]=useState(""),[busyAction,setBusyAction]=useState(false);
+ const [selected,setSelected]=useState(""),[busyAction,setBusyAction]=useState(false),[editingId,setEditingId]=useState(null);
  const userId=session?.user?.id;
  const load=useCallback(async()=>{
   if(!supabase||!userId)return;
@@ -55,9 +55,10 @@ export default function TariffTime({session,profile,isManager,services,onNotice,
   const h=Number(form.hourly_rate||0),p=Number(form.per_agent_rate||0);
   if((form.billing_mode!=="per_agent"&&h<=0)||(form.billing_mode==="per_agent"&&p<=0)){onNotice?.("Completa el precio correspondiente al tipo de cobro.");return}
   setBusyAction(true);
-  const {error}=await supabase.from("service_tariffs").insert({name:form.name.trim(),description:form.description.trim()||null,billing_mode:form.billing_mode,hourly_rate:form.billing_mode==="per_agent"?0:h,per_agent_rate:form.billing_mode==="per_agent"?p:(form.billing_mode==="hourly_per_agent"?1:0),created_by:userId});
+  const payload={name:form.name.trim(),description:form.description.trim()||null,billing_mode:form.billing_mode,hourly_rate:form.billing_mode==="per_agent"?0:h,per_agent_rate:form.billing_mode==="per_agent"?p:(form.billing_mode==="hourly_per_agent"?1:0)};
+  const {error}=editingId?await supabase.from("service_tariffs").update(payload).eq("id",editingId):await supabase.from("service_tariffs").insert({...payload,created_by:userId});
   setBusyAction(false);if(error){onNotice?.(error.message);return}
-  setForm({name:"",description:"",billing_mode:"hourly",hourly_rate:"",per_agent_rate:""});await load();onNotice?.("Tarifa creada.");
+  setForm({name:"",description:"",billing_mode:"hourly",hourly_rate:"",per_agent_rate:""});setEditingId(null);await load();onNotice?.(editingId?"Tarifa actualizada.":"Tarifa creada.");
  };
  const toggleTariff=async t=>{const {error}=await supabase.from("service_tariffs").update({is_active:!t.is_active}).eq("id",t.id);if(error)onNotice?.(error.message);else load()};
  const applyTariff=async e=>{
@@ -102,7 +103,7 @@ export default function TariffTime({session,profile,isManager,services,onNotice,
   </div>
   {isManager&&<>
    <div className="panel">
-    <h3><Receipt size={18}/> Crear tarifa</h3><p className="muted">Configura si el cobro será por hora, por agente o combinando ambos. Las tarifas aplicadas a servicios quedan congeladas en ese servicio.</p>
+    <h3><Receipt size={18}/> {editingId?"Editar tarifa":"Crear tarifa"}</h3><p className="muted">Configura si el cobro será por hora, por agente o combinando ambos. Las tarifas aplicadas a servicios quedan congeladas en ese servicio.</p>
     <form className="tt-form" onSubmit={createTariff}>
      <label>Nombre del servicio<input required value={form.name} onChange={e=>setForm(x=>({...x,name:e.target.value}))} placeholder="Ej. Escolta personal"/></label>
      <label>Modalidad<select value={form.billing_mode} onChange={e=>setForm(x=>({...x,billing_mode:e.target.value}))}><option value="hourly">Por hora</option><option value="per_agent">Por agente</option><option value="hourly_per_agent">Por hora y por agente</option></select></label>
@@ -110,9 +111,9 @@ export default function TariffTime({session,profile,isManager,services,onNotice,
      {form.billing_mode==="per_agent"&&<label>Precio por agente (USD)<input required min="0.01" step="0.01" type="number" value={form.per_agent_rate} onChange={e=>setForm(x=>({...x,per_agent_rate:e.target.value}))}/></label>}
      {form.billing_mode==="hourly_per_agent"&&<label>Precio por hora y por agente (USD)<input required min="0.01" step="0.01" type="number" value={form.hourly_rate} onChange={e=>setForm(x=>({...x,hourly_rate:e.target.value}))}/></label>}
      <label className="tt-wide">Descripción<textarea value={form.description} onChange={e=>setForm(x=>({...x,description:e.target.value}))}/></label>
-     <button className="red" disabled={busyAction}><Plus size={15}/> Guardar tarifa</button>
+     <div className="tt-form-actions"><button className="red" disabled={busyAction}><Plus size={15}/> {editingId?"Guardar cambios":"Guardar tarifa"}</button>{editingId&&<button type="button" className="outline" onClick={()=>{setEditingId(null);setForm({name:"",description:"",billing_mode:"hourly",hourly_rate:"",per_agent_rate:""})}}>Cancelar edición</button>}</div>
     </form>
-    <div className="tt-tariffs">{tariffs.map(t=><article key={t.id}><div><b>{t.name}</b><small>{modeLabel(t.billing_mode)} · {t.billing_mode==="hourly"?money(t.hourly_rate)+" / hora":t.billing_mode==="per_agent"?money(t.per_agent_rate)+" / agente":money(t.hourly_rate)+" / hora / agente"}</small></div><button className="outline" onClick={()=>toggleTariff(t)}>{t.is_active?"Desactivar":"Activar"}</button></article>)}</div>
+    <div className="tt-tariffs">{tariffs.map(t=><article key={t.id}><div><b>{t.name}</b><small>{modeLabel(t.billing_mode)} · {t.billing_mode==="hourly"?money(t.hourly_rate)+" / hora":t.billing_mode==="per_agent"?money(t.per_agent_rate)+" / agente":money(t.hourly_rate)+" / hora / agente"}</small></div><div className="tt-tariff-actions"><button className="outline" onClick={()=>{setEditingId(t.id);setForm({name:t.name,description:t.description||"",billing_mode:t.billing_mode,hourly_rate:t.billing_mode==="per_agent"?"":String(t.hourly_rate),per_agent_rate:t.billing_mode==="per_agent"?String(t.per_agent_rate):""})}}><Pencil size={13}/> Editar</button><button className="outline" onClick={()=>toggleTariff(t)}>{t.is_active?"Desactivar":"Activar"}</button></div></article>)}</div>
    </div>
    <div className="panel">
     <h3><Users size={18}/> Asignar tarifas y agentes</h3>
