@@ -160,3 +160,18 @@ create unique index if not exists one_open_shift_per_agent
  on public.shifts(agent_id) where clock_out is null;
 alter table public.services add column if not exists billing_total_snapshot numeric(12,2);
 alter table public.services add column if not exists billing_calculated_at timestamptz;
+
+-- Solo se pueden asignar miembros aprobados del personal operativo.
+create or replace function public.validate_service_assignment()
+returns trigger language plpgsql security definer set search_path=''
+as $$
+begin
+ if not exists(select 1 from public.profiles p where p.id=new.agent_id and p.status='approved' and p.role in ('agent','commander')) then
+  raise exception 'Solo puedes asignar agentes o comandantes aprobados.';
+ end if;
+ return new;
+end $$;
+drop trigger if exists service_assignment_validate_trigger on public.service_assignments;
+create trigger service_assignment_validate_trigger
+before insert or update of agent_id on public.service_assignments
+for each row execute function public.validate_service_assignment();
