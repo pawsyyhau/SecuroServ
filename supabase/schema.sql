@@ -169,7 +169,7 @@ begin
  end if;
  new.updated_at:=now();
  return new;
-end $;
+end $$;
 create or replace function public.audit_service_changes()
 returns trigger language plpgsql security definer set search_path=''
 as $$
@@ -182,7 +182,7 @@ begin
   if v_event is not null then insert into public.service_events(service_id,event_type,actor_id) values(new.id,v_event,auth.uid()); end if;
  end if;
  return new;
-end $;
+end $$;
 drop trigger if exists services_audit_trigger on public.services;
 drop trigger if exists services_stamp_trigger on public.services;
 create trigger services_stamp_trigger before update on public.services
