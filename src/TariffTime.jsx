@@ -36,7 +36,7 @@ export default function TariffTime({session,profile,isManager,services,onNotice,
  const myShift=shifts.find(x=>x.agent_id===userId&&!x.clock_out);
  const myTimer=entries.find(x=>x.agent_id===userId&&!x.ended_at);
  const myAssignments=assignments.filter(x=>x.agent_id===userId);
- const availableServices=services.filter(s=>s.status==="active"&&(isManager||myAssignments.some(a=>a.service_id===s.id)));
+ const availableServices=services.filter(s=>s.status==="active"&&myAssignments.some(a=>a.service_id===s.id));
  const serviceById=useMemo(()=>Object.fromEntries(services.map(s=>[s.id,s])),[services]);
  const profileById=useMemo(()=>Object.fromEntries(agents.map(a=>[a.id,a])),[agents]);
  const tariffById=useMemo(()=>Object.fromEntries(tariffs.map(t=>[t.id,t])),[tariffs]);
