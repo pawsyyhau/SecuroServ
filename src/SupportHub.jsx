@@ -117,6 +117,15 @@ export default function SupportHub({supabase,session,profile,isManager}) {
     setHistory(a.data||[]);setReviews(r.data||[]);
     if(a.error||r.error)setError(a.error?.message||r.error?.message||"No se pudo cargar el historial.");
   }
+  useEffect(()=>{
+    if(!supabase||!clientDetails||!isManager)return;
+    const channel=supabase.channel("client-record-"+clientDetails.id)
+      .on("postgres_changes",{event:"*",schema:"public",table:"appointments",filter:"customer_user_id=eq."+clientDetails.id},()=>chooseClient(clientDetails))
+      .on("postgres_changes",{event:"*",schema:"public",table:"reviews",filter:"customer_user_id=eq."+clientDetails.id},()=>chooseClient(clientDetails))
+      .subscribe();
+    return()=>{supabase.removeChannel(channel)};
+  },[supabase,clientDetails?.id,isManager]);
+
   const filteredConversations=useMemo(()=>conversations.filter(c=>(c.owner_name+" "+c.owner_role+" "+c.subject).toLowerCase().includes(query.toLowerCase())),[conversations,query]);
   const filteredMembers=useMemo(()=>members.filter(p=>(p.full_name+" "+p.username+" "+p.rank).toLowerCase().includes(query.toLowerCase())),[members,query]);
   const filteredClients=useMemo(()=>clients.filter(p=>(p.full_name+" "+p.username+" "+p.phone).toLowerCase().includes(query.toLowerCase())),[clients,query]);
