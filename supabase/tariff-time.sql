@@ -154,3 +154,9 @@ drop trigger if exists close_service_timer_on_shift_end_trigger on public.shifts
 create trigger close_service_timer_on_shift_end_trigger
 after update of clock_out on public.shifts
 for each row execute function public.close_service_timer_on_shift_end();
+
+-- Un turno abierto por agente y total de facturación congelado al finalizar.
+create unique index if not exists one_open_shift_per_agent
+ on public.shifts(agent_id) where clock_out is null;
+alter table public.services add column if not exists billing_total_snapshot numeric(12,2);
+alter table public.services add column if not exists billing_calculated_at timestamptz;
