@@ -100,12 +100,40 @@ async function handleApi(req, res, url) {
     if (!adminClient || !token) { sendJson(res, 401, { error: "Inicia sesión para continuar." }); return true; }
     const { data: authData, error: authError } = await adminClient.auth.getUser(token);
     if (authError || !authData?.user) { sendJson(res, 401, { error: "Tu sesión no es válida." }); return true; }
-    const { data: profile, error: profileError } = await adminClient.from("profiles").select("role,status").eq("id", authData.user.id).maybeSingle();
-    if (profileError || !profile) { sendJson(res, 404, { error: "No encontramos tu perfil." }); return true; }
-    if (profile.role === "customer" && profile.status !== "approved") {
-      const { error } = await adminClient.from("profiles").update({ status: "approved", rank: "Cliente" }).eq("id", authData.user.id).eq("role", "customer");
-      if (error) { sendJson(res, 500, { error: "No se pudo activar tu cuenta de Cliente." }); return true; }
+
+    const user = authData.user;
+    const metadata = user.user_metadata || {};
+    const { data: existingProfile, error: profileError } = await adminClient
+      .from("profiles").select("id,role,status").eq("id", user.id).maybeSingle();
+    if (profileError) {
+      sendJson(res, 500, { error: "No se pudo consultar tu perfil: " + profileError.message });
+      return true;
     }
+
+    if (!existingProfile) {
+      const fullName = typeof metadata.full_name === "string" && metadata.full_name.trim()
+        ? metadata.full_name.trim() : "Usuario";
+      const username = typeof metadata.username === "string" && metadata.username.trim()
+        ? metadata.username.trim().toLowerCase() : "user_" + user.id.slice(0, 8);
+      const phone = typeof metadata.phone === "string" ? metadata.phone.replace(/\\D/g, "") : null;
+      const { error: insertError } = await adminClient.from("profiles").insert({
+        id: user.id, full_name: fullName, username, phone: phone || null,
+        role: "customer", status: "approved", rank: "Cliente"
+      });
+      if (insertError) {
+        sendJson(res, 500, { error: "No se pudo crear tu perfil de Cliente: " + insertError.message });
+        return true;
+      }
+    } else if (existingProfile.role === "customer" && existingProfile.status !== "approved") {
+      const { error: updateError } = await adminClient.from("profiles")
+        .update({ status: "approved", rank: "Cliente" })
+        .eq("id", user.id).eq("role", "customer");
+      if (updateError) {
+        sendJson(res, 500, { error: "No se pudo activar tu cuenta de Cliente: " + updateError.message });
+        return true;
+      }
+    }
+
     sendJson(res, 200, { ok: true });
     return true;
   }
