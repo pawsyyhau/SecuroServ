@@ -21,18 +21,19 @@ alter table public.profiles add constraint profiles_status_check check(status in
 -- Cada cuenta nueva comienza como cliente. Dirección puede convertirla en agente y aprobarla.
 create or replace function public.create_profile_for_new_user()
 returns trigger language plpgsql security definer set search_path=''
-as $$
-declare
- v_name text;
- v_username text;
+as $
 begin
- v_name := coalesce(new.raw_user_meta_data->>'full_name','Usuario');
- v_username := coalesce(nullif(new.raw_user_meta_data->>'username',''), 'user_'||substr(new.id::text,1,8));
  insert into public.profiles(id,full_name,username,phone,role,status,rank)
- values(new.id,v_name,v_username,nullif(new.raw_user_meta_data->>'phone',''),'customer','approved','Cliente')
+ values(
+  new.id,
+  coalesce(new.raw_user_meta_data->>'full_name','Usuario'),
+  coalesce(nullif(new.raw_user_meta_data->>'username',''), 'user_'||substr(new.id::text,1,8)),
+  nullif(new.raw_user_meta_data->>'phone',''),
+  'customer','approved','Cliente'
+ )
  on conflict(id) do nothing;
  return new;
-end $$;
+end $;
 drop trigger if exists on_auth_user_created_profile on auth.users;
 create trigger on_auth_user_created_profile after insert on auth.users
 for each row execute function public.create_profile_for_new_user();
