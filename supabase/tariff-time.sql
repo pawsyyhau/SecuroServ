@@ -182,7 +182,7 @@ drop policy if exists "assigned staff read services" on public.services;
 create policy "assigned staff read services" on public.services for select to authenticated
 using (public.is_manager() or exists(
  select 1 from public.service_assignments a
- where a.service_id=id and a.agent_id=auth.uid()
+ where a.service_id=public.services.id and a.agent_id=auth.uid()
 ));
 
 drop policy if exists "staff read service events" on public.service_events;
@@ -190,7 +190,7 @@ drop policy if exists "assigned staff read service events" on public.service_eve
 create policy "assigned staff read service events" on public.service_events for select to authenticated
 using (public.is_manager() or exists(
  select 1 from public.service_assignments a
- where a.service_id=service_id and a.agent_id=auth.uid()
+ where a.service_id=public.service_events.service_id and a.agent_id=auth.uid()
 ));
 
 drop policy if exists "staff read service messages" on public.service_messages;
@@ -200,7 +200,7 @@ drop policy if exists "assigned staff send service messages" on public.service_m
 create policy "assigned staff read service messages" on public.service_messages for select to authenticated
 using (public.is_manager() or exists(
  select 1 from public.service_assignments a
- where a.service_id=service_id and a.agent_id=auth.uid()
+ where a.service_id=public.service_messages.service_id and a.agent_id=auth.uid()
 ));
 create policy "assigned staff send service messages" on public.service_messages for insert to authenticated
 with check (
