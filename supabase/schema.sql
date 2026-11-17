@@ -280,9 +280,13 @@ drop policy if exists "staff send service messages" on public.service_messages;
 create policy "staff read service messages" on public.service_messages for select using(public.is_staff());
 create policy "staff send service messages" on public.service_messages for insert with check(public.is_staff() and exists(select 1 from public.services s where s.id=service_id and s.status<>'completed'));
 drop policy if exists "manager manage business tags" on public.business_tags;
+drop policy if exists "staff read own business tags" on public.business_tags;
 create policy "manager manage business tags" on public.business_tags for all using(public.is_manager()) with check(public.is_manager());
+create policy "staff read own business tags" on public.business_tags for select using(exists(select 1 from public.profile_business_tags pbt where pbt.tag_id=id and pbt.profile_id=auth.uid()));
 drop policy if exists "manager manage profile tags" on public.profile_business_tags;
+drop policy if exists "staff read own profile tags" on public.profile_business_tags;
 create policy "manager manage profile tags" on public.profile_business_tags for all using(public.is_manager()) with check(public.is_manager());
+create policy "staff read own profile tags" on public.profile_business_tags for select using(profile_id=auth.uid());
 
 -- Storage privado: solo personal aprobado puede subir/ver imágenes del chat.
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
