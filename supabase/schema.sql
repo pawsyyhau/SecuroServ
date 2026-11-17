@@ -12,7 +12,7 @@ create table if not exists public.profiles(
 );
 alter table public.profiles add column if not exists phone text;
 alter table public.profiles add column if not exists contact_email text;
-create unique index if not exists profiles_phone_unique_idx on public.profiles(phone) where phone is not null;
+drop index if exists public.profiles_phone_unique_idx;
 alter table public.profiles drop constraint if exists profiles_role_check;
 alter table public.profiles add constraint profiles_role_check check(role in('agent','commander','admin','director','customer'));
 alter table public.profiles drop constraint if exists profiles_status_check;
@@ -29,7 +29,7 @@ begin
  v_name := coalesce(new.raw_user_meta_data->>'full_name','Usuario');
  v_username := coalesce(nullif(new.raw_user_meta_data->>'username',''), 'user_'||substr(new.id::text,1,8));
  insert into public.profiles(id,full_name,username,phone,role,status,rank)
- values(new.id,v_name,v_username,new.phone,'customer','approved','Cliente')
+ values(new.id,v_name,v_username,nullif(new.raw_user_meta_data->>'phone',''),'customer','approved','Cliente')
  on conflict(id) do nothing;
  return new;
 end $$;
