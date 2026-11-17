@@ -59,8 +59,8 @@ async function handleApi(req, res, url) {
     return true;
   }
   if (url.pathname === "/api/register" && req.method === "POST") {
-    if (!adminClient || !initialAdminKey) {
-      sendJson(res, 503, { error: "Dirección debe configurar las claves privadas del servidor antes de habilitar el registro." });
+    if (!adminClient) {
+      sendJson(res, 503, { error: "El servidor todavía no está configurado para registrar cuentas." });
       return true;
     }
     let body;
@@ -81,12 +81,6 @@ async function handleApi(req, res, url) {
       sendJson(res, 503, { error: "Falta aplicar la configuración inicial de SecuroServ en Supabase." });
       return true;
     }
-    const firstRegistration = !bootstrap.admin_claimed;
-    if (firstRegistration && !safeKeyMatch(body.initialAdminKey, initialAdminKey)) {
-      sendJson(res, 403, { error: "La clave inicial de Dirección no es válida. La primera cuenta necesita esa clave." });
-      return true;
-    }
-
     const email = username + "@users.securoserv.com";
     const { data: created, error: createError } = await adminClient.auth.admin.createUser({
       email, password, email_confirm: true,
@@ -97,17 +91,35 @@ async function handleApi(req, res, url) {
       return true;
     }
 
-    let isInitialAdmin = false;
-    if (firstRegistration) {
-      const { data: claimed, error: claimError } = await adminClient.rpc("claim_securoserv_initial_admin", { p_user_id: created.user.id });
-      if (claimError) {
-        await adminClient.auth.admin.deleteUser(created.user.id);
-        sendJson(res, 500, { error: "No se pudo activar la primera cuenta de Dirección. No se creó la cuenta; revisa la migración SQL." });
-        return true;
-      }
-      isInitialAdmin = claimed === true;
+    sendJson(res, 201, { ok: true, isInitialAdmin: false });
+    return true;
+  }
+  if (url.pathname === "/api/claim-initial-admin" && req.method === "POST") {
+    if (!adminClient || !initialAdminKey) {
+      sendJson(res, 503, { error: "La activación de Dirección no está configurada en el servidor." });
+      return true;
     }
-    sendJson(res, 201, { ok: true, isInitialAdmin });
+    let body;
+    try { body = await readJson(req); }
+    catch (error) { sendJson(res, 400, { error: error.message || "Solicitud inválida." }); return true; }
+    const authorization = req.headers.authorization || "";
+    const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+    if (!token) { sendJson(res, 401, { error: "Inicia sesión antes de solicitar la activación." }); return true; }
+    const { data: authData, error: authError } = await adminClient.auth.getUser(token);
+    if (authError || !authData?.user) { sendJson(res, 401, { error: "Tu sesión no es válida. Inicia sesión nuevamente." }); return true; }
+    if (!safeKeyMatch(body.key, initialAdminKey)) { sendJson(res, 403, { error: "La clave de activación no es válida." }); return true; }
+    const { data: bootstrap, error: bootstrapError } = await adminClient.from("securoserv_bootstrap").select("admin_claimed").eq("id", 1).maybeSingle();
+    if (bootstrapError || !bootstrap) { sendJson(res, 503, { error: "Falta aplicar la configuración inicial de SecuroServ en Supabase." }); return true; }
+    if (bootstrap.admin_claimed) { sendJson(res, 409, { error: "La activación inicial ya fue utilizada. Tu cuenta permanece como Cliente." }); return true; }
+    const { data: profile, error: profileError } = await adminClient.from("profiles").select("role,status").eq("id", authData.user.id).maybeSingle();
+    if (profileError || !profile || profile.role !== "customer" || profile.status !== "approved") {
+      sendJson(res, 403, { error: "Solo una cuenta de Cliente activa puede solicitar la activación inicial." });
+      return true;
+    }
+    const { data: claimed, error: claimError } = await adminClient.rpc("claim_securoserv_initial_admin", { p_user_id: authData.user.id });
+    if (claimError) { sendJson(res, 500, { error: "No se pudo activar Dirección. Revisa la configuración de Supabase." }); return true; }
+    if (claimed !== true) { sendJson(res, 409, { error: "La activación inicial ya fue utilizada. Tu cuenta permanece como Cliente." }); return true; }
+    sendJson(res, 200, { ok: true, role: "director" });
     return true;
   }
   if (url.pathname.startsWith("/api/")) {
