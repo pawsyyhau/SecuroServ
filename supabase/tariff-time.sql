@@ -120,3 +120,37 @@ create policy "agents stop own service timer" on public.service_time_entries for
 
 grant select,insert,update,delete on public.service_tariffs,public.service_assignments,public.service_time_entries to authenticated;
 grant select,update on public.services to authenticated;
+
+-- Al pausar/finalizar un servicio se cierran automáticamente los contadores abiertos.
+create or replace function public.close_service_timers_on_status_change()
+returns trigger language plpgsql security definer set search_path=''
+as $$
+begin
+ if new.status is distinct from old.status and new.status in ('paused','completed') then
+  update public.service_time_entries
+  set ended_at=now()
+  where service_id=new.id and ended_at is null;
+ end if;
+ return new;
+end $$;
+drop trigger if exists close_service_timers_on_status_change_trigger on public.services;
+create trigger close_service_timers_on_status_change_trigger
+after update of status on public.services
+for each row execute function public.close_service_timers_on_status_change();
+
+-- Si Dirección corrige/cierra un turno, el contador abierto también queda cerrado.
+create or replace function public.close_service_timer_on_shift_end()
+returns trigger language plpgsql security definer set search_path=''
+as $$
+begin
+ if old.clock_out is null and new.clock_out is not null then
+  update public.service_time_entries
+  set ended_at=new.clock_out
+  where agent_id=new.agent_id and ended_at is null;
+ end if;
+ return new;
+end $$;
+drop trigger if exists close_service_timer_on_shift_end_trigger on public.shifts;
+create trigger close_service_timer_on_shift_end_trigger
+after update of clock_out on public.shifts
+for each row execute function public.close_service_timer_on_shift_end();
