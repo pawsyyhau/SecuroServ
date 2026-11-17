@@ -62,7 +62,14 @@ begin
   if public.is_manager() then
    v_reason := current_setting('securoserv.correction_reason', true);
    if v_reason is null or length(trim(v_reason)) < 5 then
-    raise exception 'Las correcciones administrativas requieren un motivo mediante el formulario de Dirección.';
+    -- Cierre operativo automático/manual permitido solo si no altera el inicio
+    -- y únicamente transforma un contador abierto en uno cerrado.
+    if new.started_at is distinct from old.started_at
+       or old.ended_at is not null
+       or new.ended_at is null
+       or new.ended_at < old.started_at then
+     raise exception 'Las correcciones administrativas requieren un motivo mediante el formulario de Dirección.';
+    end if;
    end if;
   else
    if old.agent_id <> auth.uid() then raise exception 'No puedes modificar este registro.'; end if;
