@@ -113,6 +113,11 @@ create trigger support_message_touch_conversation
 after insert on public.support_messages
 for each row execute function public.touch_support_conversation();
 
+drop policy if exists "public booking request" on public.appointments;
+create policy "public booking request"
+on public.appointments for insert
+with check (status = 'pending' and (customer_user_id is null or customer_user_id = auth.uid()));
+
 drop policy if exists "customer own appointments read" on public.appointments;
 create policy "customer own appointments read"
 on public.appointments for select to authenticated
