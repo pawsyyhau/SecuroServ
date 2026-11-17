@@ -27,8 +27,8 @@ export default function SupportHub({supabase,session,profile,isManager}) {
     if(error){setError(error.message);return;}
     setConversations(data||[]);
     if(!isManager && data?.length && !selected) setSelected(data[0]);
-    if(selected && data?.length){const current=data.find(x=>x.id===selected.id);if(current)setSelected(current);}
-  },[supabase,session,isManager,selected]);
+    if(selected && data?.length){const current=data.find(x=>x.id===selected.id);if(current && (current.last_message_at!==selected.last_message_at || current.status!==selected.status || current.owner_name!==selected.owner_name))setSelected(current);}
+  },[supabase,session,isManager,selected?.id,selected?.last_message_at,selected?.status,selected?.owner_name]);
 
   const ensureConversation=useCallback(async()=>{
     if(!supabase||!session||!profile||!["customer","agent"].includes(profile.role))return;
