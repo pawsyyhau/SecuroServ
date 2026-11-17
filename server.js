@@ -162,6 +162,18 @@ async function handleApi(req, res, url) {
     if (!token) { sendJson(res, 401, { error: "Inicia sesión antes de solicitar la activación." }); return true; }
     const { data: authData, error: authError } = await adminClient.auth.getUser(token);
     if (authError || !authData?.user) { sendJson(res, 401, { error: "Tu sesión no es válida. Inicia sesión nuevamente." }); return true; }
+
+    // La activación es idempotente: si esta cuenta ya es Dirección, no se vuelve a consumir la clave.
+    const { data: currentProfile, error: currentProfileError } = await adminClient
+      .from("profiles").select("id,role,status").eq("id", authData.user.id).maybeSingle();
+    if (currentProfileError) {
+      sendJson(res, 500, { error: "No se pudo consultar el perfil: " + currentProfileError.message });
+      return true;
+    }
+    if (currentProfile?.role === "director" && currentProfile.status === "approved") {
+      sendJson(res, 200, { ok: true, role: "director", alreadyActivated: true });
+      return true;
+    }
     if (!safeKeyMatch(body.key, initialAdminKey)) { sendJson(res, 403, { error: "La clave de activación no es válida." }); return true; }
     const { data: bootstrap, error: bootstrapError } = await adminClient.from("securoserv_bootstrap").select("admin_claimed").eq("id", 1).maybeSingle();
     if (bootstrapError || !bootstrap) { sendJson(res, 503, { error: "Falta aplicar la configuración inicial de SecuroServ en Supabase." }); return true; }
