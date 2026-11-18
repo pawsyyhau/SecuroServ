@@ -134,6 +134,10 @@ async function handleApi(req, res, url) {
       if (duplicateError) { sendJson(res, 500, { error: "No se pudo verificar la disponibilidad del usuario." }); return true; }
       if (duplicate) { sendJson(res, 409, { error: "Ese nombre de usuario ya está en uso." }); return true; }
     }
+    const age = body.age === "" || body.age == null ? current.age : Number(body.age);
+    if (age != null && (!Number.isInteger(age) || age < 1 || age > 120)) {
+      sendJson(res, 400, { error: "La edad debe ser un número entre 1 y 120." }); return true;
+    }
     const oldEmail = user.email;
     const oldMetadata = user.user_metadata || {};
     const newEmail = username + "@users.securoserv.com";
@@ -151,7 +155,7 @@ async function handleApi(req, res, url) {
     }
     const update = {
       full_name: fullName, username,
-      age: body.age === "" || body.age == null ? current.age : Math.max(1, Math.min(120, Number(body.age))),
+      age,
       phone: typeof body.phone === "string" ? body.phone.replace(/\D/g, "") || null : current.phone,
       contact_email: typeof body.contact_email === "string" ? body.contact_email.trim() || null : current.contact_email,
       discord: typeof body.discord === "string" ? body.discord.trim() || null : current.discord,
