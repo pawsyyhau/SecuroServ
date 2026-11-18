@@ -23,13 +23,15 @@ export default function TariffTime({session,profile,isManager,services,onNotice,
    supabase.from("service_tariffs").select("*").order("name"),
    supabase.from("service_assignments").select("*").order("assigned_at",{ascending:false}),
    supabase.from("service_time_entries").select("*").order("started_at",{ascending:false}).limit(250),
-   supabase.from("shifts").select("*").order("clock_in",{ascending:false}).limit(250)
+   supabase.from("shifts").select("*").order("clock_in",{ascending:false}).limit(250),
+   isManager?supabase.from("service_time_corrections").select("*").order("corrected_at",{ascending:false}).limit(250):Promise.resolve({data:[],error:null})
   ]);
   if(t.error)onNotice?.("Tarifario: "+t.error.message);
   if(a.error)onNotice?.("Asignaciones: "+a.error.message);
   if(e.error)onNotice?.("Registro de tiempo: "+e.error.message);
   if(sh.error)onNotice?.("Fichajes: "+sh.error.message);
-  setTariffs(t.data||[]);setAssignments(a.data||[]);setEntries(e.data||[]);setShifts(sh.data||[]);
+  if(c.error&&isManager)onNotice?.("Auditoría de fichajes: "+c.error.message);
+  setTariffs(t.data||[]);setAssignments(a.data||[]);setEntries(e.data||[]);setShifts(sh.data||[]);setCorrections(c.data||[]);
   if(isManager){const {data:p,error}=await supabase.from("profiles").select("id,full_name,username,role").eq("status","approved").in("role",["agent","commander"]).order("full_name");if(error)onNotice?.(error.message);setAgents(p||[])}
   setLoading(false);
  },[userId,isManager,onNotice]);
