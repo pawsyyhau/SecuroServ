@@ -106,6 +106,66 @@ async function handleApi(req, res, url) {
     sendJson(res, 200, { profile });
     return true;
   }
+  if (url.pathname === "/api/update-profile" && req.method === "POST") {
+    const authorization = req.headers.authorization || "";
+    const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+    if (!adminClient || !token) { sendJson(res, 401, { error: "Inicia sesión para actualizar tu perfil." }); return true; }
+    let body;
+    try { body = await readJson(req); }
+    catch (error) { sendJson(res, 400, { error: error.message || "Solicitud inválida." }); return true; }
+    const { data: authData, error: authError } = await adminClient.auth.getUser(token);
+    if (authError || !authData?.user) { sendJson(res, 401, { error: "Tu sesión no es válida." }); return true; }
+    const user = authData.user;
+    const { data: current, error: currentError } = await adminClient.from("profiles").select("*").eq("id", user.id).maybeSingle();
+    if (currentError || !current) { sendJson(res, 500, { error: "No se pudo consultar tu perfil." }); return true; }
+    const fullName = typeof body.full_name === "string" ? body.full_name.trim() : current.full_name;
+    const username = typeof body.username === "string" ? body.username.trim().toLowerCase() : current.username;
+    if (fullName.length < 2 || fullName.length > 100 || !/^[a-z0-9_.-]{3,30}$/.test(username)) {
+      sendJson(res, 400, { error: "El nombre debe tener entre 2 y 100 caracteres y el usuario entre 3 y 30 (letras, números, punto, guion o guion bajo)." }); return true;
+    }
+    const usernameChanged = username !== current.username;
+    if (usernameChanged) {
+      const changedAt = current.username_changed_at ? new Date(current.username_changed_at).getTime() : 0;
+      const nextAt = changedAt ? changedAt + 30 * 24 * 60 * 60 * 1000 : 0;
+      if (nextAt && Date.now() < nextAt) {
+        sendJson(res, 429, { error: "Solo puedes cambiar tu usuario una vez cada 30 días.", nextUsernameChangeAt: new Date(nextAt).toISOString() }); return true;
+      }
+      const { data: duplicate, error: duplicateError } = await adminClient.from("profiles").select("id").eq("username", username).neq("id", user.id).maybeSingle();
+      if (duplicateError) { sendJson(res, 500, { error: "No se pudo verificar la disponibilidad del usuario." }); return true; }
+      if (duplicate) { sendJson(res, 409, { error: "Ese nombre de usuario ya está en uso." }); return true; }
+    }
+    const oldEmail = user.email;
+    const oldMetadata = user.user_metadata || {};
+    const newEmail = username + "@users.securoserv.com";
+    if (usernameChanged) {
+      const { error: authUpdateError } = await adminClient.auth.admin.updateUserById(user.id, {
+        email: newEmail, email_confirm: true,
+        user_metadata: { ...oldMetadata, full_name: fullName, username }
+      });
+      if (authUpdateError) { sendJson(res, 400, { error: "No se pudo actualizar el usuario de acceso: " + authUpdateError.message }); return true; }
+    } else if (oldMetadata.full_name !== fullName) {
+      const { error: metadataError } = await adminClient.auth.admin.updateUserById(user.id, {
+        user_metadata: { ...oldMetadata, full_name: fullName, username }
+      });
+      if (metadataError) { sendJson(res, 400, { error: "No se pudo actualizar el nombre de la cuenta." }); return true; }
+    }
+    const update = {
+      full_name: fullName, username,
+      phone: typeof body.phone === "string" ? body.phone.replace(/\D/g, "") || null : current.phone,
+      contact_email: typeof body.contact_email === "string" ? body.contact_email.trim() || null : current.contact_email,
+      discord: typeof body.discord === "string" ? body.discord.trim() || null : current.discord,
+      discord_id: typeof body.discord_id === "string" ? body.discord_id.trim() || null : current.discord_id,
+      photo_url: typeof body.photo_url === "string" ? body.photo_url.trim() || null : current.photo_url,
+      iban: current.role === "agent" && typeof body.iban === "string" ? body.iban.trim() || null : current.iban
+    };
+    const { data: saved, error: saveError } = await adminClient.from("profiles").update(update).eq("id", user.id).select("*").single();
+    if (saveError) {
+      if (usernameChanged) await adminClient.auth.admin.updateUserById(user.id, { email: oldEmail, email_confirm: true, user_metadata: oldMetadata });
+      sendJson(res, 500, { error: "No se pudieron guardar los cambios del perfil: " + saveError.message }); return true;
+    }
+    sendJson(res, 200, { ok: true, profile: saved });
+    return true;
+  }
   if (url.pathname === "/api/ensure-customer-account" && req.method === "POST") {
     const authorization = req.headers.authorization || "";
     const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
