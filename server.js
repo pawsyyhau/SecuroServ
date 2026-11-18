@@ -22,6 +22,25 @@ const adminClient = supabaseUrl && serviceRoleKey
   ? createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
   : null;
 
+// El chat comunitario es efímero: elimina cada mensaje al cumplir una hora.
+if (adminClient) {
+  let cleaningChat = false;
+  const cleanExpiredCommunityMessages = async () => {
+    if (cleaningChat) return;
+    cleaningChat = true;
+    try {
+      const { error } = await adminClient.from("chat_messages").delete().lte("expires_at", new Date().toISOString());
+      if (error) console.error("No se pudieron limpiar mensajes vencidos del chat:", error.message);
+    } catch (error) {
+      console.error("Error limpiando mensajes vencidos del chat:", error?.message || error);
+    } finally {
+      cleaningChat = false;
+    }
+  };
+  cleanExpiredCommunityMessages();
+  setInterval(cleanExpiredCommunityMessages, 5000);
+}
+
 function sendJson(res, status, payload) {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
   res.end(JSON.stringify(payload));
