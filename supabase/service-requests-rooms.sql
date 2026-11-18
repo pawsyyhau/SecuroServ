@@ -32,3 +32,22 @@ do $$ begin
  if not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='appointments') then alter publication supabase_realtime add table public.appointments; end if;
  if not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='service_assignments') then alter publication supabase_realtime add table public.service_assignments; end if;
 end $$;
+
+-- El historial y los archivos adjuntos también respetan la privacidad de cada sala.
+drop policy if exists "staff read service events" on public.service_events;
+drop policy if exists "participants read service events" on public.service_events;
+create policy "participants read service events" on public.service_events for select to authenticated
+using (public.is_manager() or exists(select 1 from public.service_assignments a where a.service_id=service_events.service_id and a.agent_id=auth.uid()));
+
+drop policy if exists "staff service chat image read" on storage.objects;
+drop policy if exists "staff service chat image upload" on storage.objects;
+drop policy if exists "participants service chat image read" on storage.objects;
+drop policy if exists "participants service chat image upload" on storage.objects;
+create policy "participants service chat image read" on storage.objects for select to authenticated
+using (bucket_id='service-chat' and (
+ public.is_manager() or exists(select 1 from public.service_assignments a where a.service_id=(storage.foldername(name))[1]::uuid and a.agent_id=auth.uid())
+));
+create policy "participants service chat image upload" on storage.objects for insert to authenticated
+with check (bucket_id='service-chat' and (
+ public.is_manager() or exists(select 1 from public.service_assignments a where a.service_id=(storage.foldername(name))[1]::uuid and a.agent_id=auth.uid())
+));
