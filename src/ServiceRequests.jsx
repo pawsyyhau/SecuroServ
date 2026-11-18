@@ -1,0 +1,19 @@
+import React,{useCallback,useEffect,useState} from "react";
+import {CalendarDays,Check,X,RefreshCw,MessageCircle,Clock3} from "lucide-react";
+export default function ServiceRequests({supabase,session,onNotice,onRefreshServices,onOpenPanel}){
+ const [requests,setRequests]=useState([]),[busy,setBusy]=useState(false),[filter,setFilter]=useState("pending");
+ const load=useCallback(async()=>{if(!supabase)return;setBusy(true);const {data,error}=await supabase.from("appointments").select("*").order("created_at",{ascending:false});if(error)onNotice(error.message);else setRequests(data||[]);setBusy(false)},[supabase,onNotice]);
+ useEffect(()=>{load();const ch=supabase.channel("service-requests-live").on("postgres_changes",{event:"*",schema:"public",table:"appointments"},load).subscribe();return()=>supabase.removeChannel(ch)},[load,supabase]);
+ async function decide(row,accept){
+  if(!accept){const {error}=await supabase.from("appointments").update({status:"rejected"}).eq("id",row.id);if(error){onNotice(error.message);return}onNotice("Solicitud rechazada.");await load();return}
+  const {data:service,error:createError}=await supabase.from("services").insert({name:"Servicio · "+row.customer_name,club:null,description:row.details||"Solicitud aceptada",status:"scheduled",created_by:session.user.id}).select().single();
+  if(createError){onNotice("No se pudo crear la sala: "+createError.message);return}
+  const {error:updateError}=await supabase.from("appointments").update({status:"confirmed",service_id:service.id}).eq("id",row.id);
+  if(updateError){await supabase.from("services").delete().eq("id",service.id);onNotice("No se pudo confirmar la solicitud: "+updateError.message);return}
+  onNotice("Solicitud aceptada. Se creó su sala de servicio.");await load();await onRefreshServices();onOpenPanel(service);
+ }
+ const visible=requests.filter(r=>filter==="all"||r.status===filter);
+ return <section className="content service-requests"><div className="support-heading"><div><small>COORDINACIÓN · DIRECCIÓN</small><h2>Solicitudes de <em>servicio</em></h2><p className="muted">Revisa cada petición y conviértela en una sala operativa al aceptarla.</p></div><button className="outline" onClick={load}><RefreshCw size={15}/> Actualizar</button></div>
+ <div className="request-filters">{[["pending","Pendientes"],["confirmed","Aceptadas"],["rejected","Rechazadas"],["all","Todas"]].map(([v,l])=><button key={v} className={filter===v?"selected":""} onClick={()=>setFilter(v)}>{l} {v==="pending"&&<b>{requests.filter(x=>x.status==="pending").length}</b>}</button>)}</div>
+ {busy?<p className="muted">Cargando solicitudes...</p>:visible.length===0?<div className="panel"><p className="muted">No hay solicitudes en esta categoría.</p></div>:<div className="request-grid">{visible.map(r=><article className="panel request-card" key={r.id}><div className="request-card-top"><span className={"status "+r.status}>{({pending:"Pendiente",confirmed:"Aceptada",rejected:"Rechazada",completed:"Finalizada",cancelled:"Cancelada"}[r.status]||r.status)}</span><small>{new Date(r.created_at).toLocaleString("es-PA")}</small></div><h3>{r.customer_name}</h3><p className="muted">{r.customer_email}</p><div className="request-meta"><span><CalendarDays size={15}/>{new Date(r.date+"T12:00:00").toLocaleDateString("es-PA",{dateStyle:"long"})}</span><span><Clock3 size={15}/>{String(r.start_time).slice(0,5)} – {String(r.end_time).slice(0,5)}</span></div><p>{r.details||"Sin detalles adicionales."}</p>{r.service_id&&<p className="request-room-link"><MessageCircle size={15}/> Sala creada y vinculada</p>}{r.status==="pending"&&<div className="request-actions"><button className="red" onClick={()=>decide(r,true)}><Check size={15}/> Aceptar y crear sala</button><button className="outline" onClick={()=>decide(r,false)}><X size={15}/> Rechazar</button></div>}</article>)}</div>}</section>
+}
