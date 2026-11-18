@@ -151,6 +151,7 @@ async function handleApi(req, res, url) {
     }
     const update = {
       full_name: fullName, username,
+      age: body.age === "" || body.age == null ? current.age : Math.max(1, Math.min(120, Number(body.age))),
       phone: typeof body.phone === "string" ? body.phone.replace(/\D/g, "") || null : current.phone,
       contact_email: typeof body.contact_email === "string" ? body.contact_email.trim() || null : current.contact_email,
       discord: typeof body.discord === "string" ? body.discord.trim() || null : current.discord,
