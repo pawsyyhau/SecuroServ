@@ -252,3 +252,5 @@ hr{border:0;border-top:1px solid var(--line)}
  footer{display:block}
  footer>span{display:block;margin-top:12px}
 }
+
+.room-join{padding:22px;margin:18px 0;border:1px solid rgba(190,145,105,.3);border-radius:16px;background:linear-gradient(135deg,rgba(117,49,54,.16),rgba(190,145,105,.06))}.room-join h4{margin:0 0 8px}.room-join p{margin:0 0 16px}
