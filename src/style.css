@@ -254,3 +254,14 @@ hr{border:0;border-top:1px solid var(--line)}
 }
 
 .room-join{padding:22px;margin:18px 0;border:1px solid rgba(190,145,105,.3);border-radius:16px;background:linear-gradient(135deg,rgba(117,49,54,.16),rgba(190,145,105,.06))}.room-join h4{margin:0 0 8px}.room-join p{margin:0 0 16px}
+
+/* Public community chat */
+.chat{width:min(390px,calc(100vw - 28px));height:min(590px,calc(100dvh - 115px));border:1px solid rgba(190,145,105,.38);border-radius:18px;overflow:hidden;box-shadow:0 22px 70px rgba(0,0,0,.55);background:#101114}
+.chathead{align-items:center;gap:12px;background:linear-gradient(120deg,#241719,#19191b);border-bottom:1px solid rgba(190,145,105,.2)}
+.chathead>div{display:grid;gap:4px}.chathead>div b{font:500 17px Oswald;letter-spacing:.04em}.chathead>div small{font-size:10px;color:#c2a27d;letter-spacing:.04em}
+.chatbody{display:flex;flex-direction:column;gap:10px;background:radial-gradient(ellipse at top,rgba(110,48,52,.13),transparent 55%),#101114}
+.chatbody>p.muted{margin:auto;text-align:center;background:transparent;color:#aaa}
+.chatbody .public-chat-message{max-width:92%;align-self:flex-start;background:#202125;border:1px solid #343438;border-radius:13px 13px 13px 4px;padding:10px 12px}
+.chatbody .public-chat-message small{display:block;color:#c7a77e;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px}
+.chatbody .public-chat-message p{padding:0;margin:0;background:transparent;font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
+.chat form{background:#17181b;border-top:1px solid #343438;align-items:center}.chat form input{border-radius:10px}.chat form button{min-width:42px;height:42px;border-radius:10px;display:grid;place-items:center}
