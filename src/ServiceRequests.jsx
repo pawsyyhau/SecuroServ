@@ -6,7 +6,10 @@ export default function ServiceRequests({supabase,session,onNotice,onRefreshServ
  const load=useCallback(async()=>{if(!supabase)return;setBusy(true);const {data,error}=await supabase.from("appointments").select("*").order("created_at",{ascending:false});if(error)onNotice(error.message);else setRequests(data||[]);setBusy(false)},[supabase,onNotice]);
  useEffect(()=>{load();const ch=supabase.channel("service-requests-live").on("postgres_changes",{event:"*",schema:"public",table:"appointments"},load).subscribe();return()=>supabase.removeChannel(ch)},[load,supabase]);
  async function decide(row,accept){
-  if(!accept){const {error}=await supabase.from("appointments").update({status:"rejected"}).eq("id",row.id);if(error){onNotice(error.message);return}onNotice("Solicitud rechazada.");await load();setProcessingId("");return}
+  if(processingId)return;
+  if(!accept&&!window.confirm("¿Rechazar esta solicitud?"))return;
+  setProcessingId(row.id);
+  if(!accept){const {error}=await supabase.from("appointments").update({status:"rejected"}).eq("id",row.id);if(error){onNotice(error.message);setProcessingId("");return}onNotice("Solicitud rechazada.");await load();setProcessingId("");return}
   const {data:service,error:createError}=await supabase.from("services").insert({name:"Servicio · "+row.customer_name,club:null,description:["Solicitud aceptada","Cliente: "+row.customer_name,"Fecha: "+row.date,"Horario: "+String(row.start_time).slice(0,5)+" – "+String(row.end_time).slice(0,5),row.details||""].filter(Boolean).join("\\n"),status:"scheduled",created_by:session.user.id}).select().single();
   if(createError){onNotice("No se pudo crear la sala: "+createError.message);setProcessingId("");return}
   const {error:updateError}=await supabase.from("appointments").update({status:"confirmed",service_id:service.id}).eq("id",row.id);
