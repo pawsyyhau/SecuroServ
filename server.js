@@ -113,6 +113,50 @@ async function handleApi(req, res, url) {
     sendJson(res, 201, { ok: true, isInitialAdmin: false });
     return true;
   }
+  if (url.pathname === "/api/my-service-rooms" && req.method === "GET") {
+    const authorization = req.headers.authorization || "";
+    const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+    if (!adminClient || !token) { sendJson(res, 401, { error: "Inicia sesión para consultar tus servicios." }); return true; }
+    const { data: authData, error: authError } = await adminClient.auth.getUser(token);
+    if (authError || !authData?.user) { sendJson(res, 401, { error: "Tu sesión no es válida." }); return true; }
+    const { data: appointments, error: appointmentError } = await adminClient.from("appointments").select("service_id,status").eq("customer_user_id", authData.user.id).in("status", ["confirmed", "completed"]).not("service_id", "is", null);
+    if (appointmentError) { sendJson(res, 500, { error: "No se pudieron consultar tus solicitudes: " + appointmentError.message }); return true; }
+    const ids = [...new Set((appointments || []).map(row => row.service_id).filter(Boolean))];
+    if (!ids.length) { sendJson(res, 200, { services: [] }); return true; }
+    const { data: services, error: serviceError } = await adminClient.from("services").select("*").in("id", ids).order("created_at", { ascending: false });
+    if (serviceError) { sendJson(res, 500, { error: "No se pudieron cargar tus salas: " + serviceError.message }); return true; }
+    sendJson(res, 200, { services: services || [] }); return true;
+  }
+  if (url.pathname === "/api/customer-service-chat" && (req.method === "GET" || req.method === "POST")) {
+    const authorization = req.headers.authorization || "";
+    const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
+    if (!adminClient || !token) { sendJson(res, 401, { error: "Inicia sesión para abrir esta sala." }); return true; }
+    const { data: authData, error: authError } = await adminClient.auth.getUser(token);
+    if (authError || !authData?.user) { sendJson(res, 401, { error: "Tu sesión no es válida." }); return true; }
+    let body = {};
+    if (req.method === "POST") { try { body = await readJson(req); } catch (error) { sendJson(res, 400, { error: error.message || "Solicitud inválida." }); return true; } }
+    const serviceId = req.method === "GET" ? url.searchParams.get("serviceId") : body.serviceId;
+    if (typeof serviceId !== "string" || !/^[0-9a-f-]{36}$/i.test(serviceId)) { sendJson(res, 400, { error: "Sala de servicio no válida." }); return true; }
+    const { data: appointment, error: ownershipError } = await adminClient.from("appointments").select("id,status").eq("customer_user_id", authData.user.id).eq("service_id", serviceId).in("status", ["confirmed", "completed"]).maybeSingle();
+    if (ownershipError || !appointment) { sendJson(res, 403, { error: "Esta sala no pertenece a tu cuenta o no ha sido aceptada." }); return true; }
+    if (req.method === "GET") {
+      const [{ data: messages, error: messagesError }, { data: events, error: eventsError }] = await Promise.all([
+        adminClient.from("service_messages").select("*").eq("service_id", serviceId).order("created_at", { ascending: true }),
+        adminClient.from("service_events").select("*").eq("service_id", serviceId).order("created_at", { ascending: true })
+      ]);
+      if (messagesError || eventsError) { sendJson(res, 500, { error: "No se pudo cargar el chat de la sala." }); return true; }
+      sendJson(res, 200, { messages: messages || [], events: events || [] }); return true;
+    }
+    const message = typeof body.message === "string" ? body.message.trim() : "";
+    if (!message || message.length > 4000) { sendJson(res, 400, { error: "Escribe un mensaje de hasta 4000 caracteres." }); return true; }
+    if (appointment.status !== "confirmed") { sendJson(res, 409, { error: "El servicio ya finalizó y el chat está cerrado." }); return true; }
+    const { data: service, error: serviceError } = await adminClient.from("services").select("status").eq("id", serviceId).maybeSingle();
+    if (serviceError || !service || service.status === "completed") { sendJson(res, 409, { error: "Este servicio ya finalizó y no admite mensajes." }); return true; }
+    const { data: profile } = await adminClient.from("profiles").select("full_name").eq("id", authData.user.id).maybeSingle();
+    const { data: saved, error: insertError } = await adminClient.from("service_messages").insert({ service_id: serviceId, sender_id: authData.user.id, sender_name: profile?.full_name || "Cliente", body: message }).select("*").single();
+    if (insertError) { sendJson(res, 500, { error: "No se pudo enviar el mensaje: " + insertError.message }); return true; }
+    sendJson(res, 201, { message: saved }); return true;
+  }
   if (url.pathname === "/api/my-profile" && req.method === "POST") {
     const authorization = req.headers.authorization || "";
     const token = authorization.startsWith("Bearer ") ? authorization.slice(7) : "";
