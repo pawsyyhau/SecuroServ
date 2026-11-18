@@ -1,5 +1,6 @@
 import React,{useCallback,useEffect,useState} from "react";
 import {CalendarDays,Check,X,RefreshCw,MessageCircle,Clock3} from "lucide-react";
+import "./service-requests.css";
 export default function ServiceRequests({supabase,session,onNotice,onRefreshServices,onOpenPanel}){
  const [requests,setRequests]=useState([]),[busy,setBusy]=useState(false),[filter,setFilter]=useState("pending");
  const load=useCallback(async()=>{if(!supabase)return;setBusy(true);const {data,error}=await supabase.from("appointments").select("*").order("created_at",{ascending:false});if(error)onNotice(error.message);else setRequests(data||[]);setBusy(false)},[supabase,onNotice]);
