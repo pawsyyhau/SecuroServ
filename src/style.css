@@ -29,8 +29,8 @@
  --accent:#9e3e49;
  --accent-strong:#b74d58;
  --accent-soft:rgba(158,62,73,.15);
- --gold:#c9ad7b;
- --gold-soft:rgba(201,173,123,.13);
+ --gold:#d32634;
+ --gold-soft:rgba(211,38,52,.13);
  --success:#86b79a;
  --warning:#d4b477;
  --danger:#d27c80;
@@ -68,7 +68,7 @@ nav button,.switch{
  padding:10px 12px;border:1px solid transparent;border-radius:9px;
  color:#aaa9a3;font-size:12px;font-weight:600;letter-spacing:.02em;
 }
-nav button:hover,nav button.active{color:#f5eee4;background:var(--gold-soft);border-color:rgba(201,173,123,.16)}
+nav button:hover,nav button.active{color:#f5eee4;background:var(--gold-soft);border-color:rgba(211,38,52,.16)}
 .head-actions{gap:9px}
 .red,.outline{
  min-height:42px;padding:10px 16px;border-radius:10px;
@@ -79,7 +79,7 @@ nav button:hover,nav button.active{color:#f5eee4;background:var(--gold-soft);bor
 }
 .red:hover{background:linear-gradient(135deg,#bb5360,#913541);transform:translateY(-1px);box-shadow:0 10px 24px rgba(113,34,45,.24)}
 .outline{background:rgba(255,255,255,.025);border-color:var(--line-strong);color:#e9e5dc;box-shadow:none}
-.outline:hover{background:var(--gold-soft);border-color:rgba(201,173,123,.42);color:#f6e8cc;transform:translateY(-1px)}
+.outline:hover{background:var(--gold-soft);border-color:rgba(211,38,52,.42);color:#ffffff;transform:translateY(-1px)}
 .large{min-height:49px;padding:13px 20px}
 .hero{
  min-height:690px;padding:clamp(75px,10vw,130px) clamp(24px,9vw,145px) 60px;
@@ -119,10 +119,10 @@ nav button:hover,nav button.active{color:#f5eee4;background:var(--gold-soft);bor
  transition:border-color var(--ease),background var(--ease),box-shadow var(--ease);
 }
 .panel input:hover,.panel textarea:hover,.panel select:hover,
-.tt-form input:hover,.tt-form select:hover,.tt-form textarea:hover{border-color:rgba(201,173,123,.32)}
+.tt-form input:hover,.tt-form select:hover,.tt-form textarea:hover{border-color:rgba(211,38,52,.32)}
 .panel input:focus,.panel textarea:focus,.panel select:focus,
 .tt-form input:focus,.tt-form select:focus,.tt-form textarea:focus{
- outline:0;border-color:rgba(201,173,123,.65);box-shadow:0 0 0 3px rgba(201,173,123,.08);background:#111419;
+ outline:0;border-color:rgba(211,38,52,.65);box-shadow:0 0 0 3px rgba(211,38,52,.08);background:#111419;
 }
 .panel textarea,.tt-form textarea{min-height:95px;resize:vertical}
 .two{gap:15px}
@@ -134,14 +134,14 @@ nav button:hover,nav button.active{color:#f5eee4;background:var(--gold-soft);bor
 .calhead button,.chathead button{
  width:38px;height:38px;border-radius:10px;background:#20242a;color:#eee;border:1px solid var(--line);
 }
-.calhead button:hover,.chathead button:hover{background:var(--gold-soft);border-color:rgba(201,173,123,.35)}
+.calhead button:hover,.chathead button:hover{background:var(--gold-soft);border-color:rgba(211,38,52,.35)}
 .days{gap:7px}
 .days>b{color:var(--gold);font-size:10px;letter-spacing:.08em}
 .days button{
  height:68px;padding:9px;border-radius:10px;text-align:left;
  background:rgba(255,255,255,.025);color:#eae6de;border:1px solid var(--line);
 }
-.days button:hover{background:var(--gold-soft);border-color:rgba(201,173,123,.36)}
+.days button:hover{background:var(--gold-soft);border-color:rgba(211,38,52,.36)}
 .days button.taken{background:rgba(158,62,73,.17);border-color:rgba(183,77,88,.42)}
 .days button.dim{opacity:.28}
 .days button small{color:#d58c91}
@@ -153,7 +153,7 @@ nav button:hover,nav button.active{color:#f5eee4;background:var(--gold-soft);bor
  padding:16px;border-radius:12px;background:rgba(255,255,255,.025);
  border:1px solid var(--line);color:#eee9e1;
 }
-.service-card:hover{background:var(--surface-hover);border-color:rgba(201,173,123,.28);transform:translateY(-1px)}
+.service-card:hover{background:var(--surface-hover);border-color:rgba(211,38,52,.28);transform:translateY(-1px)}
 .service-card.selected{background:var(--accent-soft);border-color:rgba(183,77,88,.55);box-shadow:inset 3px 0 #a84a55}
 .service-card b{font-size:13px}
 .service-card small{color:var(--muted);font-size:10px;letter-spacing:.04em}
@@ -172,7 +172,7 @@ nav button:hover,nav button.active{color:#f5eee4;background:var(--gold-soft);bor
 .service-photo{border-radius:10px;border-color:var(--line-strong)}
 .event-row{border-color:var(--line)}
 .tag-list{gap:8px}
-.business-tag{border-radius:30px;background:var(--gold-soft);border-color:rgba(201,173,123,.25);color:#e2cda7;padding:7px 11px}
+.business-tag{border-radius:30px;background:var(--gold-soft);border-color:rgba(211,38,52,.25);color:#dddddd;padding:7px 11px}
 .profile-summary{padding:18px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.02)}
 .chatfab{background:linear-gradient(145deg,#b34b57,#7f2935);box-shadow:0 12px 30px rgba(120,37,48,.35)}
 .chat{border:1px solid var(--line-strong);border-radius:16px;overflow:hidden;background:#15181d;box-shadow:var(--shadow)}
@@ -198,19 +198,19 @@ footer{border-color:var(--line);background:rgba(8,9,11,.65);color:#88857e;paddin
 .tt-tariffs article,.tt-service{
  padding:16px;border-radius:12px;background:rgba(255,255,255,.025);border:1px solid var(--line);
 }
-.tt-tariffs article:hover,.tt-service:hover{border-color:rgba(201,173,123,.22)}
+.tt-tariffs article:hover,.tt-service:hover{border-color:rgba(211,38,52,.22)}
 .tt-tariffs article b,.tt-service b{color:#eee9e1;font-size:13px}
 .tt-tariffs small,.tt-service small{color:var(--muted)}
 .tt-assigned span{border-radius:30px;background:var(--accent-soft);border-color:rgba(183,77,88,.3);color:#e9b8bc}
 .tt-row{border-color:var(--line);color:#c0bcb4}
-.tt-head{background:rgba(201,173,123,.07);color:var(--gold)}
+.tt-head{background:rgba(211,38,52,.07);color:var(--gold)}
 .tt-history{border-color:var(--line);color:var(--muted)}
 .tt-history b{color:#eee9e1}
 .tt-tariff-actions button{border-radius:9px}
 .tt-form-actions{gap:9px}
 /* Global interaction polish */
-a{color:#d6b98a}
-a:hover{color:#f0d8ae}
+a{color:#e0444e}
+a:hover{color:#ffffff}
 hr{border:0;border-top:1px solid var(--line)}
 :focus-visible{outline-color:var(--gold)}
 @media(max-width:900px){
