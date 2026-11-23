@@ -176,3 +176,15 @@ create unique index if not exists service_assignments_active_unique
  on public.service_assignments(service_id,agent_id) where removed_at is null;
 create index if not exists service_assignments_removed_history_idx
  on public.service_assignments(service_id,removed_at,assigned_at desc);
+
+-- Realtime para calendario, servicios, fichajes y asignaciones.
+do $$
+declare t text;
+begin
+ foreach t in array array['appointments','availability_slots','services','shifts','service_assignments','service_time_entries','service_messages','service_events','weekly_payments','rank_pay_rates'] loop
+  if to_regclass('public.'||t) is not null
+     and not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename=t) then
+   execute format('alter publication supabase_realtime add table public.%I',t);
+  end if;
+ end loop;
+end $$;
