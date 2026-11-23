@@ -25,7 +25,7 @@ create table if not exists public.weekly_payments(
 alter table public.rank_pay_rates enable row level security;
 alter table public.weekly_payments enable row level security;
 drop policy if exists "staff read pay rates" on public.rank_pay_rates;
-create policy "staff read pay rates" on public.rank_pay_rates for select to authenticated using(true);
+create policy "staff read pay rates" on public.rank_pay_rates for select to authenticated using(public.is_staff());
 drop policy if exists "managers manage pay rates" on public.rank_pay_rates;
 create policy "managers manage pay rates" on public.rank_pay_rates for all to authenticated using(public.is_manager()) with check(public.is_manager());
 drop policy if exists "agents read own weekly payments" on public.weekly_payments;
