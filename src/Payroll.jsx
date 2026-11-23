@@ -13,7 +13,7 @@ export default function Payroll({session,isManager,onNotice}){
  const load=useCallback(async()=>{
   if(!session?.user?.id)return;
   const [p,s,r,w]=await Promise.all([
-   isManager?supabase.from("profiles").select("id,full_name,username,rank,role,iban,photo_url").eq("status","approved").in("role",["agent","commander"]).order("full_name"):supabase.from("profiles").select("id,full_name,username,rank,role,iban,photo_url").eq("id",session.user.id),
+   isManager?supabase.from("profiles").select("id,full_name,username,rank,role,iban,photo_url").eq("status","approved").in("role",["agent","commander","admin","director"]).order("full_name"):supabase.from("profiles").select("id,full_name,username,rank,role,iban,photo_url").eq("id",session.user.id),
    isManager?supabase.from("shifts").select("*").order("clock_in",{ascending:false}).limit(1500):supabase.from("shifts").select("*").eq("agent_id",session.user.id).order("clock_in",{ascending:false}).limit(250),
    supabase.from("rank_pay_rates").select("*").order("rank"),
    isManager?supabase.from("weekly_payments").select("*").order("period_start",{ascending:false}).limit(500):supabase.from("weekly_payments").select("*").eq("agent_id",session.user.id).order("period_start",{ascending:false}).limit(100)
