@@ -22,7 +22,7 @@ create table if not exists public.recruitment_applications(
  user_id uuid not null unique references public.profiles(id) on delete cascade,
  roleplay_email text not null,
  roleplay_phone text not null,
- age integer not null check(age between 18 and 99),
+ age integer not null check(age between 1 and 99),
  iban text not null,
  character_photo_path text not null,
  answers jsonb not null default '{}'::jsonb,
