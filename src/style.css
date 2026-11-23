@@ -265,3 +265,8 @@ hr{border:0;border-top:1px solid var(--line)}
 .chatbody .public-chat-message small{display:block;color:#c7a77e;font-size:10px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;margin-bottom:5px}
 .chatbody .public-chat-message p{padding:0;margin:0;background:transparent;font-size:13px;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
 .chat form{background:#17181b;border-top:1px solid #343438;align-items:center}.chat form input{border-radius:10px}.chat form button{min-width:42px;height:42px;border-radius:10px;display:grid;place-items:center}
+
+
+/* SECUROSERV · identidad Bustamante: negro, rojo, blanco y gris */
+:root{--bg:#08090b;--bg-soft:#101114;--surface:#141519;--surface-raised:#1b1c21;--surface-hover:#25262c;--line:rgba(255,255,255,.10);--line-strong:rgba(255,255,255,.19);--text:#f7f7f7;--muted:#a1a2a8;--muted-2:#777982;--accent:#a71925;--accent-strong:#d32634;--accent-soft:rgba(211,38,52,.14);--gold:#d32634;--gold-soft:rgba(211,38,52,.12);--success:#91c5a0;--warning:#d6b477;--danger:#df7b82}
+.brand small{color:#bfc0c5}.hero em,.intro em,.content h2 em{color:#e0444e}.hero .kicker,.content>small,.support-heading small{color:#e0444e}.nav button:hover,nav button.active,.switch:hover{color:#fff;background:var(--accent-soft);border-color:rgba(211,38,52,.24)}.days>b{color:#ddd}.days button.taken{background:rgba(211,38,52,.18);border-color:rgba(211,38,52,.52)}.legend i{background:#d32634}.recruitment .recruit-tabs button.active{background:var(--accent-soft);border-color:var(--accent-strong)}
