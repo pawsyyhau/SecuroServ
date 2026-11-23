@@ -165,6 +165,7 @@ alter table public.service_assignments add column if not exists removed_by uuid 
 
 -- Restringir salas operativas a Dirección y agentes seleccionados.
 drop policy if exists "agent join service room" on public.service_assignments;
+drop policy if exists "staff read services" on public.services;
 drop policy if exists "assigned staff read services" on public.services;
 create policy "assigned staff read services" on public.services for select to authenticated
 using (public.is_manager() or exists(
