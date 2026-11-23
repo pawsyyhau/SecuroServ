@@ -1,4 +1,5 @@
 -- SecuroServ: reclutamiento configurable, postulaciones y fichas de personal.
+alter table public.profiles add column if not exists character_id text;
 create table if not exists public.recruitment_settings(
  id integer primary key check(id=1),
  title text not null default 'Quiero trabajar con ustedes',
@@ -96,3 +97,21 @@ from (values
  ('¿Qué disponibilidad tienes para trabajar y participar en servicios?',5)
 ) as v(question,sort_order)
 where not exists(select 1 from public.recruitment_questions);
+
+-- Mantiene el ID del personaje en el perfil creado automáticamente al registrarse.
+create or replace function public.create_profile_for_new_user()
+returns trigger language plpgsql security definer set search_path=''
+as $func$
+begin
+ insert into public.profiles(id,full_name,character_id,username,phone,role,status,rank)
+ values(
+  new.id,
+  coalesce(new.raw_user_meta_data->>'full_name','Usuario'),
+  nullif(new.raw_user_meta_data->>'character_id',''),
+  coalesce(nullif(new.raw_user_meta_data->>'username',''), 'user_'||substr(new.id::text,1,8)),
+  nullif(new.raw_user_meta_data->>'phone',''),
+  'customer','approved','Cliente'
+ )
+ on conflict(id) do nothing;
+ return new;
+end $func$;
