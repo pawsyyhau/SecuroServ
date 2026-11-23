@@ -28,14 +28,15 @@ export default function RecruitmentHub({session,profile,isManager,onNotice,onBac
   ]);
   if(s.data){setSettings(s.data);setSettingsDraft(s.data)}
   if(q.data?.length){setQuestions(q.data)}else if(!q.error){setQuestions(defaultQuestions.map((question,i)=>({id:"default-"+i,question,sort_order:i+1,is_active:true})))}
-  if(isManager){
-   const [a,m]=await Promise.all([
-    supabase.from("recruitment_applications").select("*,applicant:profiles!recruitment_applications_user_id_fkey(full_name,username,rank)").order("created_at",{ascending:false}),
-    supabase.from("profiles").select("id,full_name,username,age,phone,contact_email,iban,photo_url,rank,role,status,created_at").in("role",["agent","commander","admin","director"]).order("full_name")
-   ]);
-   if(a.error)notice("Postulaciones: "+a.error.message);else setApplications(a.data||[]);
-   if(m.error)notice("Personal: "+m.error.message);else setMembers(m.data||[]);
-  }
+  const applicationQuery=isManager
+   ?supabase.from("recruitment_applications").select("*,applicant:profiles!recruitment_applications_user_id_fkey(full_name,username,rank)").order("created_at",{ascending:false})
+   :supabase.from("recruitment_applications").select("*").eq("user_id",session?.user?.id);
+  const memberQuery=isManager
+   ?supabase.from("profiles").select("id,full_name,username,age,phone,contact_email,iban,photo_url,rank,role,status,created_at").in("role",["agent","commander","admin","director"]).order("full_name")
+   :Promise.resolve({data:[],error:null});
+  const [a,m]=await Promise.all([applicationQuery,memberQuery]);
+  if(a.error)notice("Postulaciones: "+a.error.message);else setApplications(a.data||[]);
+  if(m.error)notice("Personal: "+m.error.message);else setMembers(m.data||[]);
  },[isManager,notice]);
  useEffect(()=>{load();const ch=supabase.channel("recruitment-live").on("postgres_changes",{event:"*",schema:"public",table:"recruitment_questions"},load).on("postgres_changes",{event:"*",schema:"public",table:"recruitment_applications"},load).on("postgres_changes",{event:"*",schema:"public",table:"recruitment_settings"},load).on("postgres_changes",{event:"*",schema:"public",table:"profiles"},load).subscribe();return()=>supabase.removeChannel(ch)},[load]);
  useEffect(()=>{if(!photo){setPhotoPreview("");return}const url=URL.createObjectURL(photo);setPhotoPreview(url);return()=>URL.revokeObjectURL(url)},[photo]);
