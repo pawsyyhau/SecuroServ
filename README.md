@@ -66,3 +66,10 @@ El primer registro se protege desde el servidor de Render. Antes de habilitarlo:
 La API valida la clave inicial en el servidor y la base de datos permite reclamar el cargo una sola vez. La primera cuenta se convierte en `director` aprobado; los registros siguientes nacen como clientes. No se solicita correo al usuario ni se requiere confirmación por correo: el correo técnico interno se genera a partir del nombre de usuario.
 
 No compartas `SUPABASE_SERVICE_ROLE_KEY` ni `INITIAL_ADMIN_KEY` por chat, capturas o repositorios.
+
+
+## Actualización de reclutamiento, personal y pagos
+
+Después de desplegar una versión que incluya estos módulos, abre Supabase → SQL Editor y ejecuta una sola vez el archivo `supabase/phase-2-upgrade.sql`.
+
+Esta actualización incorpora el ID del personaje, postulaciones con foto, cuestionario editable, expedientes de personal, tarifas por rango, pagos semanales, historial de asignaciones y permisos de salas en tiempo real. El archivo combinado ya incluye las migraciones de reclutamiento y nómina; no hace falta ejecutarlas por separado.
