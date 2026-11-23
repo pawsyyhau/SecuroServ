@@ -84,3 +84,15 @@ do $$ begin
  if not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='recruitment_questions') then alter publication supabase_realtime add table public.recruitment_questions; end if;
  if not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='recruitment_applications') then alter publication supabase_realtime add table public.recruitment_applications; end if;
 end $$;
+
+-- Preguntas iniciales editables (solo se insertan cuando el formulario está vacío).
+insert into public.recruitment_questions(question,sort_order,created_by)
+select v.question,v.sort_order,null
+from (values
+ ('¿Por qué quieres formar parte de SecuroServ?',1),
+ ('¿Qué significa para ti la responsabilidad dentro de una corporación de seguridad?',2),
+ ('¿Cómo actuarías ante un cliente molesto o una situación tensa?',3),
+ ('¿Qué harías si un compañero incumple una instrucción durante un servicio?',4),
+ ('¿Qué disponibilidad tienes para trabajar y participar en servicios?',5)
+) as v(question,sort_order)
+where not exists(select 1 from public.recruitment_questions);
