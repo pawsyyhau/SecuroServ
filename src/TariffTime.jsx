@@ -14,7 +14,7 @@ export default function TariffTime({session,profile,isManager,services,onNotice,
  const [agents,setAgents]=useState([]),[corrections,setCorrections]=useState([]),[now,setNow]=useState(Date.now()),[loading,setLoading]=useState(false);
  const [form,setForm]=useState({name:"",description:"",billing_mode:"hourly",hourly_rate:"",per_agent_rate:""});
  const [servicePick,setServicePick]=useState(""),[tariffPick,setTariffPick]=useState(""),[agentPick,setAgentPick]=useState("");
- const [selected,setSelected]=useState(""),[busyAction,setBusyAction]=useState(false),[editingId,setEditingId]=useState(null);
+ const [selected,setSelected]=useState(""),[busyAction,setBusyAction]=useState(false),[editingId,setEditingId]=useState(null),[agentSearch,setAgentSearch]=useState("");
  const [correction,setCorrection]=useState(null),[correctionBusy,setCorrectionBusy]=useState(false);
  const userId=session?.user?.id;
  const load=useCallback(async()=>{
@@ -33,7 +33,7 @@ export default function TariffTime({session,profile,isManager,services,onNotice,
   if(sh.error)onNotice?.("Fichajes: "+sh.error.message);
   if(c.error&&isManager)onNotice?.("Auditoría de fichajes: "+c.error.message);
   setTariffs(t.data||[]);setAssignments(a.data||[]);setEntries(e.data||[]);setShifts(sh.data||[]);setCorrections(c.data||[]);
-  if(isManager){const {data:p,error}=await supabase.from("profiles").select("id,full_name,username,role").eq("status","approved").in("role",["agent","commander"]).order("full_name");if(error)onNotice?.(error.message);setAgents(p||[])}
+  if(isManager){const {data:p,error}=await supabase.from("profiles").select("id,full_name,username,role,rank,photo_url").eq("status","approved").in("role",["agent","commander"]).order("full_name");if(error)onNotice?.(error.message);setAgents(p||[])}
   setLoading(false);
  },[userId,isManager,onNotice]);
  useEffect(()=>{load();const timer=setInterval(()=>load(),15000);const channel=supabase?.channel("operations-live-"+userId).on("postgres_changes",{event:"*",schema:"public",table:"shifts"},()=>load()).on("postgres_changes",{event:"*",schema:"public",table:"service_time_entries"},()=>load()).on("postgres_changes",{event:"*",schema:"public",table:"service_assignments"},()=>load()).on("postgres_changes",{event:"*",schema:"public",table:"service_time_corrections"},()=>load()).subscribe();return()=>{clearInterval(timer);if(channel)supabase.removeChannel(channel)}},[load,userId]);
@@ -130,8 +130,9 @@ export default function TariffTime({session,profile,isManager,services,onNotice,
     </form>
     <form className="tt-form tt-assign" onSubmit={assignAgent}>
      <label>Servicio<select required value={servicePick} onChange={e=>setServicePick(e.target.value)}><option value="">Seleccionar servicio</option>{services.filter(s=>s.status!=="completed").map(s=><option key={s.id} value={s.id}>{s.name}</option>)}</select></label>
-     <label>Agente<select required value={agentPick} onChange={e=>setAgentPick(e.target.value)}><option value="">Seleccionar agente</option>{agents.map(a=><option key={a.id} value={a.id}>{a.full_name} · @{a.username}</option>)}</select></label>
-     <button className="outline"><Plus size={15}/> Asignar agente</button>
+     <label>Buscar agente<input value={agentSearch} onChange={e=>setAgentSearch(e.target.value)} placeholder="Buscar por nombre o usuario..."/></label>
+     <div className="tt-agent-picker tt-wide">{agents.filter(a=>(a.full_name+" "+a.username+" "+(a.rank||"")).toLowerCase().includes(agentSearch.toLowerCase())).map(a=><button type="button" key={a.id} className={agentPick===a.id?"chosen":""} onClick={()=>setAgentPick(a.id)}><img src={a.photo_url||"/avatar-placeholder.svg"} alt=""/><span><b>{a.full_name}</b><small>{a.rank||a.role} · @{a.username}</small></span>{agentPick===a.id&&<strong>Seleccionado</strong>}</button>)}</div>
+     <button className="outline" disabled={!agentPick||!servicePick}><Plus size={15}/> Asignar agente seleccionado</button>
     </form>
     {services.map(s=><article className="tt-service" key={s.id}><div><b>{s.name}</b><small>{s.tariff_name_snapshot||"Sin tarifa aplicada"} · {serviceAgents(s.id).length} agentes · {duration(serviceHours(s.id)*3600000)} agente-horas · {duration(serviceWallHours(s.id)*3600000)} horas de servicio</small><small>{s.billing_total_snapshot!=null?"Total final: "+money(s.billing_total_snapshot):"Estimado: "+(s.billing_mode_snapshot?money(serviceCharge(s.id)):"Sin tarifar")}</small></div><div className="tt-assigned">{serviceAgents(s.id).map(a=><span key={a.id}>{profileById[a.agent_id]?.full_name||a.agent_id.slice(0,8)} <button onClick={()=>removeAssignment(a.id)} title="Quitar asignación"><Trash2 size={12}/></button></span>)}</div></article>)}
    </div>
