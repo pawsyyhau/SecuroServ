@@ -87,10 +87,11 @@ async function handleApi(req, res, url) {
     catch (error) { sendJson(res, 400, { error: error.message || "Solicitud inválida." }); return true; }
 
     const name = typeof body.name === "string" ? body.name.trim() : "";
+    const characterId = typeof body.characterId === "string" ? body.characterId.trim() : "";
     const username = typeof body.username === "string" ? body.username.trim().toLowerCase() : "";
     const phone = typeof body.phone === "string" ? body.phone.replace(/\D/g, "") : "";
     const password = typeof body.password === "string" ? body.password : "";
-    if (name.length < 2 || name.length > 100 || !/^[a-z0-9_.-]{3,30}$/.test(username) || phone.length < 5 || phone.length > 20 || password.length < 8 || password.length > 128) {
+    if (name.length < 2 || name.length > 100 || characterId.length < 1 || characterId.length > 40 || !/^[a-z0-9_.-]{3,30}$/.test(username) || phone.length < 5 || phone.length > 20 || password.length < 8 || password.length > 128) {
       sendJson(res, 400, { error: "Revisa el nombre, usuario, teléfono y contraseña. La contraseña debe tener al menos 8 caracteres." });
       return true;
     }
@@ -103,7 +104,7 @@ async function handleApi(req, res, url) {
     const email = username + "@users.securoserv.com";
     const { data: created, error: createError } = await adminClient.auth.admin.createUser({
       email, password, email_confirm: true,
-      user_metadata: { full_name: name, username, phone }
+      user_metadata: { full_name: name, character_id: characterId, username, phone }
     });
     if (createError || !created.user) {
       sendJson(res, 400, { error: createError?.message || "No se pudo crear la cuenta." });
@@ -217,7 +218,7 @@ async function handleApi(req, res, url) {
       if (metadataError) { sendJson(res, 400, { error: "No se pudo actualizar el nombre de la cuenta." }); return true; }
     }
     const update = {
-      full_name: fullName, username,
+      full_name: fullName, character_id: typeof body.character_id === "string" ? body.character_id.trim() || null : current.character_id, username,
       age,
       phone: typeof body.phone === "string" ? body.phone.replace(/\D/g, "") || null : current.phone,
       contact_email: typeof body.contact_email === "string" ? body.contact_email.trim() || null : current.contact_email,
@@ -256,8 +257,9 @@ async function handleApi(req, res, url) {
       const username = typeof metadata.username === "string" && metadata.username.trim()
         ? metadata.username.trim().toLowerCase() : "user_" + user.id.slice(0, 8);
       const phone = typeof metadata.phone === "string" ? metadata.phone.replace(/\D/g, "") : null;
+      const characterId = typeof metadata.character_id === "string" ? metadata.character_id.trim() : null;
       const { error: insertError } = await adminClient.from("profiles").insert({
-        id: user.id, full_name: fullName, username, phone: phone || null,
+        id: user.id, full_name: fullName, character_id: characterId, username, phone: phone || null,
         role: "customer", status: "approved", rank: "Cliente"
       });
       if (insertError) {
