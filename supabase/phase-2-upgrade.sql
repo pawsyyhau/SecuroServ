@@ -158,3 +158,21 @@ do $$ begin
  if not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='rank_pay_rates') then alter publication supabase_realtime add table public.rank_pay_rates; end if;
  if not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename='weekly_payments') then alter publication supabase_realtime add table public.weekly_payments; end if;
 end $$;
+
+-- Restringir salas operativas a Dirección y agentes seleccionados.
+drop policy if exists "agent join service room" on public.service_assignments;
+drop policy if exists "assigned staff read services" on public.services;
+create policy "assigned staff read services" on public.services for select to authenticated
+using (public.is_manager() or exists(
+ select 1 from public.service_assignments a
+ where a.service_id=public.services.id and a.agent_id=auth.uid() and a.removed_at is null
+));
+
+-- Conservar el historial de integrantes retirados de cada servicio.
+alter table public.service_assignments add column if not exists removed_at timestamptz;
+alter table public.service_assignments add column if not exists removed_by uuid references public.profiles(id) on delete set null;
+alter table public.service_assignments drop constraint if exists service_assignments_service_id_agent_id_key;
+create unique index if not exists service_assignments_active_unique
+ on public.service_assignments(service_id,agent_id) where removed_at is null;
+create index if not exists service_assignments_removed_history_idx
+ on public.service_assignments(service_id,removed_at,assigned_at desc);
