@@ -1,4 +1,5 @@
 -- SecuroServ: reclutamiento configurable, postulaciones y fichas de personal.
+alter table public.profiles drop constraint if exists profiles_phone_key;
 alter table public.profiles add column if not exists character_id text;
 create table if not exists public.recruitment_settings(
  id integer primary key check(id=1),
