@@ -188,3 +188,42 @@ begin
   end if;
  end loop;
 end $$;
+
+-- Un integrante retirado conserva sus horas, pero pierde acceso al chat y a los archivos del servicio.
+drop policy if exists "participants read service messages" on public.service_messages;
+create policy "participants read service messages" on public.service_messages for select to authenticated
+using (public.is_manager() or exists(
+ select 1 from public.service_assignments a
+ where a.service_id=public.service_messages.service_id and a.agent_id=auth.uid() and a.removed_at is null
+));
+drop policy if exists "participants send service messages" on public.service_messages;
+create policy "participants send service messages" on public.service_messages for insert to authenticated
+with check (
+ (public.is_manager() or exists(
+  select 1 from public.service_assignments a
+  where a.service_id=public.service_messages.service_id and a.agent_id=auth.uid() and a.removed_at is null
+ ))
+ and exists(select 1 from public.services s where s.id=service_id and s.status<>'completed')
+);
+drop policy if exists "participants read service events" on public.service_events;
+create policy "participants read service events" on public.service_events for select to authenticated
+using (public.is_manager() or exists(
+ select 1 from public.service_assignments a
+ where a.service_id=public.service_events.service_id and a.agent_id=auth.uid() and a.removed_at is null
+));
+drop policy if exists "participants service chat image read" on storage.objects;
+create policy "participants service chat image read" on storage.objects for select to authenticated
+using (bucket_id='service-chat' and (
+ public.is_manager() or exists(
+  select 1 from public.service_assignments a
+  where a.service_id=(storage.foldername(name))[1]::uuid and a.agent_id=auth.uid() and a.removed_at is null
+ )
+));
+drop policy if exists "participants service chat image upload" on storage.objects;
+create policy "participants service chat image upload" on storage.objects for insert to authenticated
+with check (bucket_id='service-chat' and (
+ public.is_manager() or exists(
+  select 1 from public.service_assignments a
+  where a.service_id=(storage.foldername(name))[1]::uuid and a.agent_id=auth.uid() and a.removed_at is null
+ )
+));
