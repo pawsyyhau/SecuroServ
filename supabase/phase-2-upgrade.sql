@@ -181,7 +181,7 @@ create index if not exists service_assignments_removed_history_idx
 do $$
 declare t text;
 begin
- foreach t in array array['appointments','availability_slots','services','shifts','service_assignments','service_time_entries','service_messages','service_events','weekly_payments','rank_pay_rates'] loop
+ foreach t in array array['appointments','availability_slots','services','shifts','service_assignments','service_time_entries','service_messages','service_events','service_tariffs','service_time_corrections','weekly_payments','rank_pay_rates','support_conversations','support_messages','recruitment_questions','recruitment_applications','recruitment_settings','profiles','chat_messages'] loop
   if to_regclass('public.'||t) is not null
      and not exists(select 1 from pg_publication_tables where pubname='supabase_realtime' and schemaname='public' and tablename=t) then
    execute format('alter publication supabase_realtime add table public.%I',t);
