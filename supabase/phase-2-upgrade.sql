@@ -190,6 +190,11 @@ begin
 end $$;
 
 -- Un integrante retirado conserva sus horas, pero pierde acceso al chat y a los archivos del servicio.
+drop policy if exists "assigned staff read service messages" on public.service_messages;
+drop policy if exists "assigned staff send service messages" on public.service_messages;
+drop policy if exists "assigned staff read service events" on public.service_events;
+drop policy if exists "assigned service chat image read" on storage.objects;
+drop policy if exists "assigned service chat image upload" on storage.objects;
 drop policy if exists "participants read service messages" on public.service_messages;
 create policy "participants read service messages" on public.service_messages for select to authenticated
 using (public.is_manager() or exists(
