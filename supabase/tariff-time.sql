@@ -228,3 +228,94 @@ with check (bucket_id='service-chat' and (
   where a.service_id=(storage.foldername(name))[1]::uuid and a.agent_id=auth.uid()
  )
 ));
+
+
+-- Historial de asignaciones: conservar las salidas y permitir reincorporaciones.
+alter table public.service_assignments
+ add column if not exists removed_at timestamptz,
+ add column if not exists removed_by uuid references public.profiles(id) on delete set null;
+
+alter table public.service_assignments
+ drop constraint if exists service_assignments_service_id_agent_id_key;
+drop index if exists public.service_assignments_service_id_agent_id_key;
+create unique index if not exists service_assignments_one_active_agent
+ on public.service_assignments(service_id,agent_id) where removed_at is null;
+create index if not exists service_assignments_service_active_idx
+ on public.service_assignments(service_id,removed_at);
+
+create or replace function public.close_service_timer_on_assignment_removal()
+returns trigger language plpgsql security definer set search_path=''
+as $$
+begin
+ if old.removed_at is null and new.removed_at is not null then
+  update public.service_time_entries set ended_at=new.removed_at
+  where service_id=new.service_id and agent_id=new.agent_id and ended_at is null;
+ end if;
+ return new;
+end $$;
+drop trigger if exists close_service_timer_on_assignment_removal_trigger on public.service_assignments;
+create trigger close_service_timer_on_assignment_removal_trigger
+after update of removed_at on public.service_assignments
+for each row execute function public.close_service_timer_on_assignment_removal();
+
+create or replace function public.validate_service_time_entry()
+returns trigger language plpgsql security definer set search_path=''
+as $$
+begin
+ if tg_op='INSERT' then
+  if new.agent_id <> auth.uid() then raise exception 'Solo puedes fichar tu propio tiempo.'; end if;
+  if not exists(select 1 from public.service_assignments a where a.service_id=new.service_id and a.agent_id=new.agent_id and a.removed_at is null) then
+   raise exception 'No estás asignado actualmente a este servicio.';
+  end if;
+  if not exists(select 1 from public.shifts sh where sh.agent_id=new.agent_id and sh.clock_out is null) then
+   raise exception 'Debes iniciar tu turno antes de iniciar un servicio.';
+  end if;
+  if not exists(select 1 from public.services s where s.id=new.service_id and s.status='active') then
+   raise exception 'El servicio debe estar activo para registrar tiempo.';
+  end if;
+ elsif tg_op='UPDATE' then
+  if old.agent_id <> auth.uid() and not public.is_manager() then raise exception 'No puedes modificar este registro.'; end if;
+  if old.ended_at is not null then raise exception 'Este registro ya fue cerrado.'; end if;
+  if new.service_id<>old.service_id or new.agent_id<>old.agent_id or new.started_at<>old.started_at then
+   raise exception 'No puedes cambiar los datos originales del fichaje.';
+  end if;
+ end if;
+ return new;
+end $$;
+
+-- Las personas retiradas conservan el historial, pero pierden acceso a la sala.
+drop policy if exists "assigned staff read service events" on public.service_events;
+drop policy if exists "participants read service events" on public.service_events;
+create policy "assigned staff read service events" on public.service_events for select to authenticated
+using (public.is_manager() or exists(
+ select 1 from public.service_assignments a where a.service_id=service_events.service_id
+ and a.agent_id=auth.uid() and a.removed_at is null
+) or exists(
+ select 1 from public.appointments ap where ap.service_id=service_events.service_id
+ and ap.customer_user_id=auth.uid() and ap.status in ('confirmed','completed')
+));
+
+drop policy if exists "assigned staff read service messages" on public.service_messages;
+drop policy if exists "participants read service messages" on public.service_messages;
+create policy "participants read service messages" on public.service_messages for select to authenticated
+using (public.is_manager() or exists(
+ select 1 from public.service_assignments a where a.service_id=service_messages.service_id
+ and a.agent_id=auth.uid() and a.removed_at is null
+) or exists(
+ select 1 from public.appointments ap where ap.service_id=service_messages.service_id
+ and ap.customer_user_id=auth.uid() and ap.status in ('confirmed','completed')
+));
+
+drop policy if exists "assigned staff send service messages" on public.service_messages;
+drop policy if exists "participants send service messages" on public.service_messages;
+create policy "participants send service messages" on public.service_messages for insert to authenticated
+with check (
+ exists(select 1 from public.services s where s.id=service_messages.service_id and s.status<>'completed')
+ and (public.is_manager() or exists(
+  select 1 from public.service_assignments a where a.service_id=service_messages.service_id
+  and a.agent_id=auth.uid() and a.removed_at is null
+ ) or exists(
+  select 1 from public.appointments ap where ap.service_id=service_messages.service_id
+  and ap.customer_user_id=auth.uid() and ap.status='confirmed'
+ ))
+);
