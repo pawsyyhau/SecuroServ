@@ -1,6 +1,7 @@
 import React,{useCallback,useEffect,useMemo,useState} from "react";
 import {supabase} from "./supabase";
 import {Wallet,Plus,CalendarDays,CheckCircle2,Clock3,RefreshCw,Save} from "lucide-react";
+import "./payroll.css";
 const money=n=>"$"+new Intl.NumberFormat("en-US",{maximumFractionDigits:0}).format(Math.round(Number(n||0)));
 const dateKey=d=>d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 const duration=n=>{const h=Math.floor(n),m=Math.round((n-h)*60);return h+" h "+String(m).padStart(2,"0")+" min"};
