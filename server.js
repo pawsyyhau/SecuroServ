@@ -91,7 +91,7 @@ async function handleApi(req, res, url) {
     const username = typeof body.username === "string" ? body.username.trim().toLowerCase() : "";
     const phone = typeof body.phone === "string" ? body.phone.replace(/\D/g, "") : "";
     const password = typeof body.password === "string" ? body.password : "";
-    if (name.length < 2 || name.length > 100 || characterId.length < 1 || characterId.length > 40 || !/^[a-z0-9_.-]{3,30}$/.test(username) || phone.length < 5 || phone.length > 20 || password.length < 8 || password.length > 128) {
+    if (name.length < 2 || name.length > 100 || characterId.length < 1 || characterId.length > 40 || !/^[a-z0-9_.-]{3,30}$/.test(username) || password.length < 8 || password.length > 128) {
       sendJson(res, 400, { error: "Revisa el nombre, usuario, teléfono y contraseña. La contraseña debe tener al menos 8 caracteres." });
       return true;
     }
