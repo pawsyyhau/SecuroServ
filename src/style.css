@@ -278,3 +278,5 @@ hr{border:0;border-top:1px solid var(--line)}
 .tt-agent-picker{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;max-height:280px;overflow:auto;padding:2px}.tt-agent-picker>button{display:flex;align-items:center;gap:10px;text-align:left;padding:9px;background:rgba(255,255,255,.025);border:1px solid var(--line);border-radius:10px;color:var(--text)}.tt-agent-picker>button.chosen{border-color:var(--accent-strong);background:var(--accent-soft)}.tt-agent-picker img{width:38px;height:38px;border-radius:50%;object-fit:cover;border:1px solid var(--line-strong)}.tt-agent-picker span{display:grid;gap:4px;flex:1}.tt-agent-picker b{font-size:11px}.tt-agent-picker small{font-size:9px;color:var(--muted)}.tt-agent-picker strong{font-size:9px;color:#fff}.tt-assign .tt-agent-picker{grid-column:1/-1}
 
 .calendar-dot{display:block;width:100%;text-align:center;color:#ed4853!important;font-size:13px!important;line-height:1;margin-top:5px;text-shadow:0 0 10px rgba(237,72,83,.45)}
+
+.tt-former{display:block;margin-top:8px;color:var(--muted);font-size:10px}
