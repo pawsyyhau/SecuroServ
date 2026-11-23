@@ -12,7 +12,7 @@ const defaultQuestions=[
  "¿Qué disponibilidad tienes para trabajar y participar en servicios?"
 ];
 const roleLabel=r=>({customer:"Cliente",agent:"Agente",commander:"Comandante",admin:"Administrador",director:"Dirección"}[r]||r);
-const workHours=rows=>(rows||[]).reduce((sum,x)=>sum+Math.max(0,new Date(x.ended_at||x.clock_out||Date.now()).getTime()-new Date(x.started_at||x.clock_in).getTime()),0)/3600000;
+const workHours=rows=>Math.round((rows||[]).reduce((sum,x)=>sum+Math.max(0,new Date(x.ended_at||x.clock_out||Date.now()).getTime()-new Date(x.started_at||x.clock_in).getTime()),0)/3600000*100)/100;
 
 export default function RecruitmentHub({session,profile,isManager,onNotice,onBack,onLogin}){
  const [settings,setSettings]=useState({title:"Quiero trabajar con ustedes",body:"En SecuroServ buscamos personas responsables, disciplinadas y comprometidas. Completa tu postulación para que Dirección pueda evaluarla."});
