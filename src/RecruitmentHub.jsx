@@ -47,7 +47,7 @@ export default function RecruitmentHub({session,profile,isManager,onNotice,onBac
   e.preventDefault();if(!session?.user?.id){notice("Inicia sesión para presentar tu postulación.");return}
   if(!photo){notice("Selecciona una foto de tu personaje.");return}
   if(!photo.type.startsWith("image/")||photo.size>8*1024*1024){notice("La foto debe ser una imagen de máximo 8 MB.");return}
-  if(Number(form.age)<18||Number(form.age)>99){notice("La edad debe estar entre 18 y 99 años.");return}
+  if(Number(form.age)<1||Number(form.age)>99){notice("La edad debe estar entre 1 y 99 años.");return}
   if(!form.email.trim()||!form.phone.trim()||!form.iban.trim()){notice("Completa correo, celular e IBAN.");return}
   if(questions.some(q=>!String(answers[q.id]||"").trim())){notice("Responde todas las preguntas del formulario.");return}
   setBusy(true);
@@ -89,7 +89,7 @@ export default function RecruitmentHub({session,profile,isManager,onNotice,onBac
    <form className="panel recruit-form" onSubmit={submitApplication}><div><small>01 / INFORMACIÓN DEL PERSONAJE</small><h3>Datos de postulación</h3><p className="muted">Tu nombre de personaje se toma de tu cuenta. No necesitas escribirlo otra vez.</p></div>
     <label>Correo electrónico del personaje<input type="email" required maxLength={160} value={form.email} onChange={e=>setField("email",e.target.value)} placeholder="correo dentro del rol"/></label>
     <label>Número celular del personaje<input required maxLength={40} value={form.phone} onChange={e=>setField("phone",e.target.value)} placeholder="Número de contacto dentro del rol"/></label>
-    <div className="two"><label>Edad del personaje<input type="number" min="18" max="99" required value={form.age} onChange={e=>setField("age",e.target.value)}/></label><label>IBAN para depósitos<input required maxLength={80} value={form.iban} onChange={e=>setField("iban",e.target.value.replace(/[^a-zA-Z0-9]/g,"").toUpperCase())} placeholder="Cuenta bancaria del personaje"/></label></div>
+    <div className="two"><label>Edad del personaje<input type="number" min="1" max="99" required value={form.age} onChange={e=>setField("age",e.target.value)}/></label><label>IBAN para depósitos<input required maxLength={80} value={form.iban} onChange={e=>setField("iban",e.target.value.replace(/[^a-zA-Z0-9]/g,"").toUpperCase())} placeholder="Cuenta bancaria del personaje"/></label></div>
     <label className="recruit-upload"><span><ImageIcon size={18}/> Foto del personaje</span><input type="file" accept="image/png,image/jpeg,image/webp" onChange={e=>setPhoto(e.target.files?.[0]||null)}/><small>Selecciona una imagen desde tu dispositivo. Máximo 8 MB.</small></label>
     {photoPreview&&<img className="recruit-preview" src={photoPreview} alt="Vista previa del personaje"/>}
     <div className="recruit-questions"><small>02 / CUESTIONARIO</small><h3>Evaluación de ingreso</h3>{questions.map((q,i)=><label key={q.id}><span>{String(i+1).padStart(2,"0")} · {q.question}</span><textarea required rows="3" value={answers[q.id]||""} onChange={e=>setAnswers(v=>({...v,[q.id]:e.target.value}))} placeholder="Escribe tu respuesta..."/></label>)}</div>
